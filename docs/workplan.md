@@ -90,16 +90,16 @@ deliverable 3).
 **E1 · Bucket and dataset (Wednesday, first).**
 
 ```
-gcloud storage buckets create gs://data-engineering-i1-jeet --location=europe-west1 --uniform-bucket-level-access
+gcloud storage buckets create gs://data-engineering-i1-g04 --location=europe-west1 --uniform-bucket-level-access
 ```
 
-Then, in the BigQuery console: create the dataset `jeet_bronze`, location
+Then, in the BigQuery console: create the dataset `g04_bronze`, location
 `europe-west1`. Post in the group when both exist.
 
 **E2 · The export as partitioned Parquet** (step 2, deliverable 1).
 - Commit the script that does it, `ingestion/land_export.py`, so it can be
   rerun.
-- Files go to `gs://data-engineering-i1-jeet/bronze/<table>/`.
+- Files go to `gs://data-engineering-i1-g04/bronze/<table>/`.
 - Bronze holds what arrived, unchanged: no cleaning, no deduplication, no
   dropped rows.
 - Pandas' defaults change data on the way in. A phone number loses its
@@ -111,7 +111,7 @@ Then, in the BigQuery console: create the dataset `jeet_bronze`, location
   - **The secret columns.** The brief says bronze is unchanged, but ADR-0001
     says `customer.pwd`, `payment_details.card_no` and `cvv` are never
     extracted. Choose, and justify the choice.
-- External tables `jeet_bronze.<table>_external` (`WITH PARTITION COLUMNS`),
+- External tables `g04_bronze.<table>_external` (`WITH PARTITION COLUMNS`),
   at least for the seven tables listed in T3.
 
 *Done when:* `COUNT(*)` on the external tables matches the export, for
@@ -129,10 +129,10 @@ example 222,644 orders and 408,560 order lines.
 `infra/iam.md`.
 - `lifecycle.json` is the policy actually applied to the group bucket, with
   no delete rule, and the reason why:
-  `gcloud storage buckets update gs://data-engineering-i1-jeet --lifecycle-file=infra/lifecycle.json`
+  `gcloud storage buckets update gs://data-engineering-i1-g04 --lifecycle-file=infra/lifecycle.json`
 - `iam.md` lists every binding on the bucket and the dataset: principal, role,
   scope, and a one-line reason. Copy it from reality:
-  `gcloud storage buckets get-iam-policy gs://data-engineering-i1-jeet`.
+  `gcloud storage buckets get-iam-policy gs://data-engineering-i1-g04`.
   We cannot create service accounts in this project: say so.
 
 *Done when:* both files match `gcloud storage buckets describe` and
@@ -149,7 +149,7 @@ example 222,644 orders and 408,560 order lines.
 - Start from the course's `consume_clickstream.py` (L03, Exercise 1 page).
 - It reads topic `clickstream` on `localhost:9092`.
 - It writes partitioned Parquet to
-  `gs://data-engineering-i1-jeet/bronze/clickstream/`. Decide whether to
+  `gs://data-engineering-i1-g04/bronze/clickstream/`. Decide whether to
   partition by `event_time` or `emitted_at`, and say why.
 - The docstring states the delivery guarantee in one sentence, and the code
   matches it. For example, the offset is committed after the file is written:
@@ -197,7 +197,7 @@ Needs E2 (bronze as external tables). Until then, read the L04 lecture and
 draft the queries. Before any measurement, turn the query cache off. Record
 **bytes processed**, never bytes billed: billing has a 10 MiB minimum.
 
-**N1 · The working set as native tables:** dataset `jeet_warehouse`
+**N1 · The working set as native tables:** dataset `g04_warehouse`
 (deliverable 1).
 - Load the seven tables. `order_items` joins `orders` to get `order_date`.
 - Say which tables you loaded and which stay external, and why.
@@ -245,7 +245,7 @@ About 20 minutes; the course's "Before the session: Docker and dbt" page.
    `europe-west1`) and `dbt_project.yml`.
 5. Run `dbt debug` in the container until it prints **All checks passed!**
 
-The seven tables the setup checks for are `jeet_bronze`'s external tables.
+The seven tables the setup checks for are `g04_bronze`'s external tables.
 
 ## Not in this plan
 

@@ -57,17 +57,17 @@ says who does what until session 5.
 ## 2. Shared resources
 
 `data-engineering-i1` is shared by **the whole cohort**, so every resource
-the group owns starts with `jeet`. The buckets and datasets from your
-exercises stay personal: never write group data there, and never write into
-anyone else's.
+the group owns starts with `g04`: we are group 4. The buckets and datasets
+from your exercises stay personal: never write group data there, and never
+write into anyone else's.
 
 | What | Name | Created by |
 |---|---|---|
-| Group bucket | `gs://data-engineering-i1-jeet` | Evaluna (L02) |
-| Bronze, one prefix per table | `gs://data-engineering-i1-jeet/bronze/<table>/` | Evaluna (export), Till (extractor), Jane (clickstream) |
-| Dead letter queue | `gs://data-engineering-i1-jeet/bronze/_dlq/<source>/` | Jane (L03) |
-| BigQuery: bronze as external tables | dataset `jeet_bronze`, tables `<table>_external` | Evaluna (L02) |
-| BigQuery: native tables | dataset `jeet_warehouse` | Enzo (L04) |
+| Group bucket | `gs://data-engineering-i1-g04` | Evaluna (L02) |
+| Bronze, one prefix per table | `gs://data-engineering-i1-g04/bronze/<table>/` | Evaluna (export), Till (extractor), Jane (clickstream) |
+| Dead letter queue | `gs://data-engineering-i1-g04/bronze/_dlq/<source>/` | Jane (L03) |
+| BigQuery: bronze as external tables | dataset `g04_bronze`, tables `<table>_external` | Evaluna (L02) |
+| BigQuery: native tables | dataset `g04_warehouse` | Enzo (L04) |
 
 - **Region:** `europe-west1` for every bucket and dataset. Location is fixed
   when a bucket or dataset is created, and moving one means recreating it.
