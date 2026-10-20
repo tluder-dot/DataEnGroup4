@@ -41,6 +41,10 @@ teaching team. Review and merge them like any other change.
 
 ## How we work
 
+**Start with [CONTRIBUTING.md](CONTRIBUTING.md)** (machine setup, names of our
+shared resources, branch and review rules) **and
+[docs/workplan.md](docs/workplan.md)** (who does what until session 5).
+
 - **Every change goes through a pull request,** reviewed by another member
   before it reaches `main`.
 - **One decision, one ADR** in `docs/adr/`. Every member writes at least one. At
