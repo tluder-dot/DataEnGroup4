@@ -38,6 +38,57 @@ BigQuery CSV load names it `int64_field_0`. Only `order_items` and `payment`,
 added after the original extract, do not have it. The tables below list it as
 *(index)*.
 
+## Where the personal data is
+
+| Table | Personal columns |
+|---|---|
+| `customer` | `c_id`, `fname`, `lname`, `phone`, `email`, **`pwd`** |
+| `payment_details` | **`card_no`**, **`cvv`**, `expiry_date`, `billing_address` |
+| `shipping_details` | `street_address`, `city`, `state`, `zip`, `country`, `phone` |
+| `buyer`, `orders`, `wishlist_item`, `cart`, `returns` | `buyer_id` |
+| `review` | `buyer_id`; `r_desc` and `title` unclassified |
+| `review_images` | `review_img` unclassified |
+| `seller`, `seller_products`, `seller_reviews` | `seller_id` (and `seller.seller_name`, empty) |
+| `customer_shipping`, `customer_payment`, `subscription` | `c_id` |
+
+**Never ingested:** `customer.pwd`, `payment_details.card_no` and
+`payment_details.cvv`, in bold above.
+
+The other 11 tables hold no personal column: `product`, `category`,
+`product_images`, `product_reviews`, `order_items`, `payment`, `shipment`,
+`carrier`, `discount`, `daily_deals`, `cart_items`. `order_items` and `payment`
+still belong to a buyer, through `orders`.
+
+## Traps in the export
+
+What a loader or a staging model has to know. Each trap belongs to exactly one
+place in silver (L05).
+
+| # | Trap | Where | What goes wrong |
+|---|---|---|---|
+| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) |
+| 2 | **Leading zeros in text codes** | `customer.phone` (82,203 start with `0`), `shipping_details.phone` (125,861), `shipping_details.zip` (19,622), `p_id` (6 products, 30 order lines) | Read as numbers, they lose the zero: a 10-digit phone becomes 9 digits, and a `p_id` no longer joins |
+| 3 | **Codes that already lost their zeros** | `payment_details.cvv`: 961 with one digit, 8,440 with two | Never ingested, but a reminder of what trap 2 does |
+| 4 | **Strings that pandas reads as missing** | `customer.fname` (4), `review.r_desc` (13), `review.title` (21) | `None`, `NA`, `N/A`, `NULL` and `n/a` become nulls with pandas' defaults. Other spellings (`Na`, `none`) stay text |
+| 5 | **Empty and blank text** | `product.p_name` (6 empty), `review.r_desc` (14 empty, 110 a single space) | Not null, but not a value either |
+| 6 | **Every order twice** | `orders`, and so `order_items`, `payment`, `shipment` | Revenue and units doubled; `DISTINCT` on the order's columns removes only a fifth of the twins (L01) |
+| 7 | **Float noise in prices** | `product.price` (35,205 with more than two decimals); 5 products under half a cent | Catalogue totals differ from what was paid (`price_at_purchase`, rounded to cents) |
+| 8 | **Columns that are always empty** | `seller.seller_name`, `orders.discount_id` | A column of nulls that looks like data |
+| 9 | **Columns with one value** | `payment.method`, `payment.status`, `review.seller_product_flag`, `shipment.shipment_type`, `customer_payment.is_default` | Nothing to filter or group on, and `seller_product_flag` contradicts the links |
+| 10 | **Empty tables** | `cart`, `cart_items`, `daily_deals`, `discount`, `returns` | A model built on them returns nothing, not an error |
+| 11 | **Inconsistent names** | `wishlist_item.product_id` for `p_id`; `shipping_details.state` holds European regions | Joins and meanings guessed from names go wrong |
+| 12 | **A timestamp with no time zone** | `payment.created_at` | The day of a payment near midnight depends on the time zone assumed |
+| 13 | **No constraints in the files** | All 27 | Keys and foreign keys hold in the source, but nothing in the CSVs enforces them |
+
+## Still to add
+
+- **Bronze types,** once the export is landed (Evaluna, ADR 0002).
+- **The clickstream events** (L03, Jane).
+- **Which path each table takes into bronze,** and the columns each path adds
+  (L03, Till). Airbyte adds `_airbyte_raw_id`, `_airbyte_extracted_at`,
+  `_airbyte_meta` and `_airbyte_generation_id`; the hand-written extractor adds
+  none.
+
 ---
 
 ## People and accounts
