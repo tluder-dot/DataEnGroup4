@@ -33,7 +33,7 @@ Facts, from the v1.0.0 export (`legacy_csv`) unless stated:
 
 | Fact | Figure |
 |---|---|
-| Size | 27 tables, 197 MB of CSV |
+| Size | 27 tables, 197 MiB of CSV (206 MB) |
 | Orders | 222,644 orders and 408,560 order lines, 15 Sep 2023 to 14 Sep 2026: about 200 orders a day |
 | Countries | 6, from `shipping_details.country` |
 | Revenue (Σ `payment.amount`) | 39.2 M |
@@ -50,10 +50,10 @@ in place.
 
 | Option | For | Against |
 |---|---|---|
-| **Data warehouse** (BigQuery only: extracts loaded straight into tables) | One system, one access model, so governance happens in one place (column-level security, views). The analysts already work in SQL. Serverless, so nothing to operate. At 197 MB it costs almost nothing. | No raw copy outside the warehouse: a bad load or transform cannot be replayed from what the source actually sent. JSON clickstream and image references fit, but awkwardly. Every new source has to be modelled before it can land. |
+| **Data warehouse** (BigQuery only: extracts loaded straight into tables) | One system, one access model, so governance happens in one place (column-level security, views). The analysts already work in SQL. Serverless, so nothing to operate. At 197 MiB it costs almost nothing. | No raw copy outside the warehouse: a bad load or transform cannot be replayed from what the source actually sent. JSON clickstream and image references fit, but awkwardly. Every new source has to be modelled before it can land. |
 | **Data lake** (Cloud Storage only: files, queried by scripts) | Cheapest storage. Takes any format, including the clickstream and images. Keeps raw history. | Analysts would need Python or Spark instead of SQL. Access control is per file or bucket, not per column, so card and personal fields cannot be hidden from some readers. Nothing defines revenue once, so the current problem stays. Without strict rules it becomes a dump of CSVs, as today. |
 | **Two-tier** (raw files in Cloud Storage, curated tables in BigQuery) | Raw extracts land unchanged and immutable, so any transform can be replayed. The lake tier takes the clickstream and files without modelling them first. Analysts and ML get SQL tables in BigQuery, with one revenue definition in gold. Each tier uses the tool it is good at. | Two storage systems, and two access models to secure: Cloud Storage IAM and BigQuery. Data is stored twice, a negligible cost at this size. One more hop, so freshness is at best one load cycle behind. |
-| **Lakehouse** (one copy in an open table format, e.g. Apache Iceberg on Cloud Storage, queried by BigQuery through BigLake) | A single copy serves SQL and file-based tools (Python and Spark for ML). Open format, so no lock-in. Keeps the lake's flexibility with warehouse transactions. | Adds a table format, a catalogue and file maintenance (compaction, snapshots) that the team has never run. Those mechanisms pay off at a volume and number of engines Albert's Marketplace does not have: 197 MB, and one query engine. More pieces to break before the first report works. |
+| **Lakehouse** (one copy in an open table format, e.g. Apache Iceberg on Cloud Storage, queried by BigQuery through BigLake) | A single copy serves SQL and file-based tools (Python and Spark for ML). Open format, so no lock-in. Keeps the lake's flexibility with warehouse transactions. | Adds a table format, a catalogue and file maintenance (compaction, snapshots) that the team has never run. Those mechanisms pay off at a volume and number of engines Albert's Marketplace does not have: 197 MiB, and one query engine. More pieces to break before the first report works. |
 
 ## Criteria
 
@@ -65,7 +65,7 @@ Scored from `––` (rules it out) to `++` (strongest).
 | **Data types** | Tables now, JSON clickstream and image references from L03 | `+` | `++` | `++` | `++` |
 | **Freshness** | Daily is enough: the reports use a nightly file today, and the ML grain is one day | `+` | `+` | `+` | `+` |
 | **Team and skills** | SQL-first team and analysts, new to cloud operations | `++` | `––` | `+` | `–` |
-| **Cost** | 197 MB, so storage is negligible; billed per byte a query scans | `+` | `+` | `+` | `+` |
+| **Cost** | 197 MiB, so storage is negligible; billed per byte a query scans | `+` | `+` | `+` | `+` |
 | **Governance** | Drop cards and passwords, restrict personal columns, one revenue definition | `++` | `––` | `+` | `+` |
 
 **What decided it:**
@@ -119,8 +119,10 @@ only gold, and nothing reads the shop database except the ingestion job.
 - **Country of an order:** it is not on the order. It comes from the buyer's
   shipping address, and the export holds today's default address, not the one
   used at order time. The star schema has to state this.
-- **The table count:** the brief says 25 tables, the export holds 27. Find out
-  which ones are missing from the brief before ingestion (L02).
+- **The table count:** the brief says 25 tables, the export holds 27. The
+  company repo's README explains the gap: the 25 tables of the original
+  extract, plus `order_items` (order lines) and `payment` (one transaction per
+  order).
 - **When to revisit:** a new ADR should reconsider the lakehouse if the
   clickstream makes storing data twice expensive, or if the ML team needs to
   read the same tables from Python or Spark without going through BigQuery.
