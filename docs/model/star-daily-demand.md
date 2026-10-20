@@ -41,6 +41,10 @@ Three choices are behind that sentence:
 | `dim_product` | `product_key` | `p_id`, product name, category name | `product`, `category` (2 categories) |
 | `dim_country` | `country_key` | country name, ISO 3166 code | `shipping_details.country` (6 countries: Belgium, France, Germany, Italy, Netherlands, Spain) |
 
+`p_id` is text, not a number: ten characters, and some start with a zero
+(`0124784577`). Read as an integer, that zero is lost and the key no longer
+matches `order_items.p_id`.
+
 ## 4. Facts
 
 | Fact | Definition | Additive? |
@@ -78,7 +82,7 @@ erDiagram
   }
   DIM_PRODUCT {
     int product_key PK
-    int p_id
+    string p_id
     string product_name
     string category_name
   }
