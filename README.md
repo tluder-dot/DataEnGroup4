@@ -19,7 +19,7 @@ the end of the course it holds the platform your group defends orally:
 | Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | |
 | Evaluna Barth | [@evalunab](https://github.com/evalunab) | |
 | Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | |
-| Enzo Meret | _to be added_ | |
+| Enzo Meret | [@emeret-as](https://github.com/emeret-as) | |
 
 ## How this repo grows
 
