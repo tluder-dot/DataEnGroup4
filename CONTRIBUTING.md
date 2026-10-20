@@ -8,8 +8,8 @@ says who does what until session 5.
 1. **Clone this repo:**
 
    ```
-   git clone https://github.com/tluder-dot/JEET.git
-   cd JEET
+   git clone https://github.com/tluder-dot/DataEnGroup4.git
+   cd DataEnGroup4
    ```
 
 2. **Google Cloud.** Everything runs in the course project
