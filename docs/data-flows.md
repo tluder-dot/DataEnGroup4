@@ -26,11 +26,16 @@ and 4 put it in front of analysts who do not need it:
 
 - **Identity and contact:** `customer.fname`, `lname`, `email`, `phone`, and the
   addresses in `shipping_details`.
-- **Credentials:** `customer.pwd`. Every value we sampled is 12 characters with
-  no hash format, so the passwords look like plain text.
+- **Credentials:** `customer.pwd`. Every value is 12 to 20 characters with no
+  hash format, so the passwords are stored in plain text.
 - **Payment card data:** `payment_details.card_no`, `cvv`, `expiry_date`,
   `billing_address`. The card industry's rules (PCI DSS) forbid storing a CVV
   after authorisation, and flow 4 copies it into a file every night.
+
+**What the platform does about it:** `customer.pwd`, `payment_details.card_no`
+and `cvv` are never extracted ([ADR-0001](adr/0001-target-architecture.md)).
+The other personal columns are marked, column by column, in the
+[data dictionary](data-dictionary.md).
 
 Flow 5 should carry only aggregates. Flow 6 does not need personal data: country
 is enough, and the table never has to hold a customer.
