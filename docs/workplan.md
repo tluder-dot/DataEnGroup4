@@ -23,21 +23,17 @@ the defence, everyone is asked about an ADR they did not write.
 
 | When | What |
 |---|---|
-| **Wed 21 Oct** | **Everyone:** set up your machine (CONTRIBUTING.md §1), review your step 1 PR(s) below, and make your first commit: your own row in the README team table (GitHub handle and role). **Evaluna:** create the bucket and the dataset (E1) and post in the group when they exist |
+| **Wed 21 Oct** | **Everyone:** set up your machine (CONTRIBUTING.md §1), review your step 1 PR(s) below, and make your first commit: your role in the README team table. **Evaluna:** create the bucket and the dataset (E1) and post in the group when they exist |
 | **Thu 22 Oct** | **Evaluna:** bronze landed, with external tables over the seven tables (E2). Enzo's work depends on it, so it comes first |
 | **Sat 24 Oct, 20:00** | Every PR open and ready for review |
 | **Sun 25 Oct, 20:00** | Everything reviewed and merged. Till updates `docs/architecture.md` last |
 | **Before session 5** | **Everyone, alone:** the L05 setup (bottom of this page) |
 
-### Step 1 reviews (Wednesday)
+### Step 1 reviews: done
 
-| PR | What | Reviewer |
-|---|---|---|
-| #2 | Data flows | Evaluna |
-| #3 | ADR-0001: target architecture | Jane |
-| #4 | Architecture v1 | Jane |
-| #5 | Star schema sketch | Enzo |
-| #7 | This plan and CONTRIBUTING.md | Evaluna |
+#2, #3, #4, #5 and #7, and the data dictionary (#8), were reviewed and merged
+on 22 October. `main` now holds step 1, this plan and the rules, so everyone
+can start their own tasks.
 
 ## Till
 
