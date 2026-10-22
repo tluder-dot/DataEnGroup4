@@ -19,7 +19,7 @@ the end of the course it holds the platform your group defends orally:
 | Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | |
 | Evaluna Barth | [@evalunab](https://github.com/evalunab) | |
 | Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | |
-| Enzo Meret | _to be added_ | |
+| Enzo Meret | [@emeret-as](https://github.com/emeret-as) | |
 
 ## How this repo grows
 
@@ -40,6 +40,10 @@ Starter files for later lessons arrive as **pull requests** opened by the
 teaching team. Review and merge them like any other change.
 
 ## How we work
+
+**Start with [CONTRIBUTING.md](CONTRIBUTING.md)** (machine setup, names of our
+shared resources, branch and review rules) **and
+[docs/workplan.md](docs/workplan.md)** (who does what until session 5).
 
 - **Every change goes through a pull request,** reviewed by another member
   before it reaches `main`.
