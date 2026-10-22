@@ -12,7 +12,7 @@ in the brief and need confirming.
 | 1 | Customers, through the web shop | Accounts (`customer`: name, email, phone, `pwd`), carts, orders and order items, payments, saved cards (`payment_details`: `card_no`, `cvv`, expiry, billing address), shipping addresses, reviews, wishlists | PostgreSQL (shop database) | Continuous, per transaction | SQL writes | The only writer of customer and order data |
 | 2 | PostgreSQL | Product catalogue, prices, daily deals, reviews, the customer's account, saved cards and addresses at checkout | Web shop | Continuous, per page view | SQL reads | The shop and everything below share one database |
 | 3 | PostgreSQL | Any of the tables, including orders, payments and customers | Analysts | Ad hoc, during the day | SQL result sets | Runs against the same tables checkout writes to |
-| 4 | PostgreSQL | Full export, one file per table (27 files), including `customer.pwd` and `payment_details.card_no` / `cvv` | Analysts' spreadsheets | Nightly batch | CSV | The brief says 25 tables; the export holds 27: the original 25 plus `order_items` and `payment` (company repo README). Each file starts with an unnamed index column |
+| 4 | PostgreSQL | Full export, one file per table (27 files), including `customer.pwd` and `payment_details.card_no` / `cvv` | Analysts' spreadsheets | Nightly batch | CSV | The brief says 25 tables; the export holds 27: the original 25 plus `order_items` and `payment` ([company repo README](https://github.com/TangoAI-AlbertSchool-Data-Eng-Cloud/albert-marketplace/blob/5cc9ce494ef88455e955f067b7409a5d78076515/README.md#L75-L77)). 25 of the 27 files start with an unnamed index column; `order_items` and `payment` do not ([dataset card](https://github.com/TangoAI-AlbertSchool-Data-Eng-Cloud/albert-marketplace/blob/5cc9ce494ef88455e955f067b7409a5d78076515/docs/dataset-card.md#L28)) |
 | 5 | Analysts' spreadsheets and direct queries (flows 3 and 4) | Revenue figures | Readers of the revenue reports | Not stated in the brief | Spreadsheets | The reports disagree on revenue |
 | 6 | *Requested, does not exist yet* | Units sold per product, per country, per day | ML team | Daily | Table | Country is not on the order: it has to come from the buyer's shipping address (`customer_shipping` → `shipping_details.country`) |
 | 7 | *Assumed:* sellers | Products, prices, stock (`product`, `seller_products`) | PostgreSQL | Continuous | SQL writes | `seller` and `seller_products` tables exist, but the brief does not say how products get in |
@@ -26,11 +26,16 @@ and 4 put it in front of analysts who do not need it:
 
 - **Identity and contact:** `customer.fname`, `lname`, `email`, `phone`, and the
   addresses in `shipping_details`.
-- **Credentials:** `customer.pwd`. Every value we sampled is 12 characters with
-  no hash format, so the passwords look like plain text.
+- **Credentials:** `customer.pwd`. Every value is 12 to 20 characters with no
+  hash format, so the passwords are stored in plain text.
 - **Payment card data:** `payment_details.card_no`, `cvv`, `expiry_date`,
   `billing_address`. The card industry's rules (PCI DSS) forbid storing a CVV
   after authorisation, and flow 4 copies it into a file every night.
+
+**What the platform does about it:** `customer.pwd`, `payment_details.card_no`
+and `cvv` are never extracted ([ADR-0001](adr/0001-target-architecture.md)).
+The other personal columns are marked, column by column, in the
+[data dictionary](data-dictionary.md).
 
 Flow 5 should carry only aggregates. Flow 6 does not need personal data: country
 is enough, and the table never has to hold a customer.
