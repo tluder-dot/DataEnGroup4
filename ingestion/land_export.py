@@ -10,7 +10,8 @@ Choices (argued in docs/adr/0002-bronze-layout.md):
   FLOAT_COLUMNS and DATE_COLUMNS are cast, and only because they are numbers
   or dates in every file.
 - The unnamed index column of 25 files is kept, as csv_index.
-- orders is partitioned by month of order_date (hive layout order_month=YYYY-MM).
+- orders is partitioned by year of order_date (hive layout order_year=YYYY).
+  By month it was 37 files of about 180 KB: too small.
   Every other table is one file: the biggest has 408,560 rows.
 - customer and payment_details are never landed: they hold plaintext
   passwords and card numbers, and ADR-0001 says they are never extracted.
@@ -39,7 +40,7 @@ SKIP_TABLES = {"customer", "payment_details"}
 SECRET_COLUMNS = {"pwd", "card_no", "cvv"}
 
 # table -> (column to partition by, function that gives the partition value)
-PARTITIONS = {"orders": ("order_date", "order_month", lambda s: s.str[:7])}
+PARTITIONS = {"orders": ("order_date", "order_year", lambda s: s.str[:4])}
 
 INT_COLUMNS = {
     "csv_index", "order_id", "payment_id", "discount_id", "address_id",
