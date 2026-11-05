@@ -23,6 +23,16 @@ the clickstream consumer. The extractor for the database tables (T2) is not on
 So every pipeline runs as the person who starts it, from their own machine.
 When that person's login lapses, the pipeline stops.
 
+**Who can read them.** The Google tokens sit in each member's home folder
+(`~/.config/gcloud/`), and `DATABASE_URL` in their `.env`: readable by that
+member's account on their own machine, and by no one else. Nothing is in the
+repo: `.gitignore` blocks `.env` and key files. No long-lived key exists, no
+service account key and no HMAC key, so nothing outlives a member's login.
+
+**How to revoke them.** On the member's machine, `gcloud auth revoke` removes
+the `gcloud` login and `gcloud auth application-default revoke` removes the
+credentials the consumer writes with.
+
 ## Clickstream: topic `clickstream` → `bronze/clickstream/`
 
 [`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py),
