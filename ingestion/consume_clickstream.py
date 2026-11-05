@@ -20,8 +20,10 @@ TOPIC = os.environ.get("KAFKA_TOPIC", "clickstream")
 # sensible default: the group IS where Kafka stores how far you have read, so
 # picking one for you would silently resume somebody else's progress.
 GROUP = os.environ["CONSUMER_GROUP"]           # your own: clickstream-<initials>
-OUT = os.environ.get("OUT", "out/bronze/clickstream")
-DLQ = os.environ.get("DLQ", "out/_dlq/clickstream")
+# Group 4's bronze layer by default. For a local test, set OUT and DLQ to a
+# folder such as out/bronze/clickstream, so test rows never reach bronze.
+OUT = os.environ.get("OUT", "gs://data-engineering-i1-g04/bronze/clickstream")
+DLQ = os.environ.get("DLQ", "gs://data-engineering-i1-g04/bronze/_dlq/clickstream")
 BATCH = int(os.environ.get("BATCH", "200"))    # rows per file
 # Seconds between writing and committing. 0 in normal use; the demo sets it to
 # 20 so the window is wide enough to kill the process inside.
