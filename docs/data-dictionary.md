@@ -49,6 +49,7 @@ added after the original extract, do not have it. The tables below list it as
 | `review_images` | `review_img` unclassified |
 | `seller`, `seller_products`, `seller_reviews` | `seller_id` (and `seller.seller_name`, empty) |
 | `customer_shipping`, `customer_payment`, `subscription` | `c_id` |
+| `clickstream` events | `buyer_id` (`session_id` is not, see [Clickstream](#clickstream)) |
 
 **Never ingested:** `customer.pwd`, `payment_details.card_no` and
 `payment_details.cvv`, in bold above.
@@ -81,9 +82,25 @@ place in silver (L05).
 
 ## In bronze
 
-All 27 tables came into bronze through one path so far: the export, landed by
-[`ingestion/land_export.py`](../ingestion/land_export.py) and read as
-`g04_bronze_1.<table>_external` ([ADR 0002](adr/0002-bronze-layout.md)).
+Two paths into bronze so far:
+
+- **The export:** all 27 tables, landed by
+  [`ingestion/land_export.py`](../ingestion/land_export.py) and read as
+  `g04_bronze_1.<table>_external` ([ADR 0002](adr/0002-bronze-layout.md)).
+  Its types are below.
+- **The clickstream:** the events, landed by
+  [`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py)
+  into `bronze/clickstream/dt=YYYY-MM-DD/`. It adds no column: `dt` is in
+  the path, not in the files. It leaves nothing out, and sends what fails the
+  schema to `bronze/_dlq/clickstream/`. Its types are under
+  [Clickstream](#clickstream).
+
+**No Airbyte path.** Airbyte would add `_airbyte_raw_id`,
+`_airbyte_extracted_at`, `_airbyte_meta` and `_airbyte_generation_id` to every
+table it lands. Without a service account it cannot reach our bucket, so no
+table in bronze has these columns. The extractor (T2) is planned to add none.
+Until it is merged, every table in bronze comes from the export, and the
+events from the clickstream consumer.
 
 **Types.** Every column is `STRING`, except:
 
@@ -106,9 +123,7 @@ tables, 126 columns, 74 of them `STRING`.
 
 ## Still to add
 
-- **The clickstream events** (L03, Jane).
-- **The extractor's and the clickstream consumer's paths into bronze,** and the
-  columns each adds (L03). There is no Airbyte path: without a service account
+- **The extractor's path into bronze,** and the columns it adds (L03, Till). There is no Airbyte path: without a service account
   it cannot reach our bucket.
 
 ---
@@ -464,3 +479,57 @@ The products in a cart. **Empty in this export.** Key: (`cart_id`, `p_id`).
 | `cart_id` | integer | → `cart` | No | |
 | `p_id` | varchar(10) | → `product` | No | |
 | `qty` | integer | Units | No | |
+
+## Clickstream
+
+### `clickstream` events · `bronze/clickstream/`
+
+What shoppers do on the site, sent to Kafka topic `clickstream` by the
+storefront and landed by
+[`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py).
+Three event types: `product_viewed`, `added_to_cart`, `order_placed`. Each
+event is checked against
+[`ingestion/clickstream.schema.json`](../ingestion/clickstream.schema.json)
+before it is accepted. **Grain: one row per event received.** Delivery is at
+least once, so the same `event_id` can appear twice after a crash. Every row
+belongs to one person through `buyer_id`.
+
+Types are the bronze Parquet types, read from the footers of the 44 files in
+`bronze/clickstream/` on 5 November 2026 (15:26 UTC). The event types come
+from the storefront's generator, `albert-marketplace/generators/live/traffic.py`.
+
+| Column | Type | Meaning | Personal data | Notes |
+|---|---|---|---|---|
+| `schema_version` | int64 | Version of the event's schema; picks the JSON Schema | No | 1 for every event so far |
+| `event_id` | string | Event ID, a UUID | No | Not unique in bronze: a crash between writing and committing writes a batch twice. Silver deduplicates on it |
+| `event_type` | string | `product_viewed`, `added_to_cart` or `order_placed` | No | Decides which of the columns below are filled |
+| `event_time` | string | When the action happened, on the simulated clock | No | ISO 8601 in UTC, ending in `Z`. Same clock as `orders.order_date`, which runs 15 times faster than real time by default. Its date is the partition `dt=`. Text in bronze, not a timestamp |
+| `emitted_at` | string | When the storefront sent the event, in real UTC time | No | ISO 8601, ending in `Z`. Seen on 4 November: `event_time` 2026-09-15, `emitted_at` 2026-11-04 |
+| `session_id` | string | One visit to the site, a random UUID drawn per visit | No | No by itself: it changes at every visit and follows no one from one visit to the next, like `orders.order_id`. The row is personal data through `buyer_id` |
+| `buyer_id` | string | → `buyer` | Yes · identifier | In every event |
+| `p_id` | string | → `product` | No | `product_viewed` and `added_to_cart` only. For an order, the products are in `items` |
+| `price` | double | Price shown for the product | No | `product_viewed` and `added_to_cart` only. A float, not a decimal |
+| `qty` | double | Units added to the cart | No | `added_to_cart` only. **An integer in the event, a double in bronze:** empty for the other events of the same file. In 38 of the 44 files |
+| `order_id` | double | → `orders` | No | `order_placed` only. **An integer in the event, a double in bronze,** for the same reason. In 33 of the 44 files |
+| `payment_method` | string | `Credit Card` or `PayPal` | No | `order_placed` only. In 33 of the 44 files |
+| `amount` | double | Order total | No | `order_placed` only. A float, not a decimal. In 33 of the 44 files |
+| `currency` | string | Currency of `amount` | No | `order_placed` only, always `EUR` in the generator. In 33 of the 44 files |
+| `items` | list of (`p_id` string, `qty` int64, `price` double) | The order's lines | No | `order_placed` only. `qty` stays an integer here. In 33 of the 44 files |
+
+**A file holds only the columns its batch needed:** a file without an order
+has no `order_id`. Reading the whole folder means merging different schemas.
+
+### Rejected events · `bronze/_dlq/clickstream/`
+
+Events that failed the schema or could not be read, one row each. Partitioned
+by the day they were rejected. Types read from the one file there on
+5 November 2026.
+
+| Column | Type | Meaning | Personal data | Notes |
+|---|---|---|---|---|
+| `raw` | string | The message exactly as it arrived | Unclassified | Can hold anything, including a `buyer_id` |
+| `reason` | string | Why it was rejected | No | The JSON or schema error |
+| `event_time` | string | **When it was rejected,** in real UTC time | No | Same name as in the events, different meaning |
+| `topic` | string | Kafka topic | No | `clickstream` |
+| `partition` | int64 | Kafka partition | No | With `offset`, finds the message again in Kafka |
+| `offset` | int64 | Position in the partition | No | |
