@@ -80,7 +80,7 @@ after the file is in the bucket, and silver deduplicates on `event_id`.
 - **What would change this decision:**
   - **A full run taking longer than the interval between runs** (duration
     pending T2): move the big tables to the incremental mode, or to CDC.
-  - **A service account, or the Airflow workaround of L07:** reopens CDC
+  - **A service account, or the Airflow workaround the work plan announces:** reopens CDC
     through Airbyte, which sees updates and deletes without rereading.
   - **The consumer not running for 168 hours:** events are lost. If it cannot
     be run reliably at least once a week, the stream decision fails first.
