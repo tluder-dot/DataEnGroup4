@@ -1,7 +1,13 @@
-"""Read clickstream events from Kafka and write them to partitioned Parquet.
+"""Read clickstream events from Kafka and land them in bronze as partitioned Parquet.
 
-The order of the last two actions in flush() is the entire lesson: write the
-file, THEN commit the offset. Read that function before you run anything.
+Delivery guarantee: at least once, because flush() writes each file to the
+bucket before it commits the Kafka offset, so a crash between the two re-reads
+the batch and writes some events twice, but never loses one.
+
+Files are partitioned by event_time (dt=YYYY-MM-DD), the same simulated clock
+as order_date, so a day of clicks lines up with the same day of orders.
+emitted_at stays a column, so a later layer can partition by arrival instead.
+Rejected events go to the DLQ, partitioned by the time they were rejected.
 """
 
 import json
