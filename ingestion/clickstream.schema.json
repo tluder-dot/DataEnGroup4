@@ -15,7 +15,7 @@
   },
   "allOf": [
     {
-      "if": {"properties": {"event_type": {"const": "product_viewed"}}},
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "product_viewed"}}},
       "then": {
         "required": ["p_id", "price"],
         "properties": {
@@ -25,7 +25,7 @@
       }
     },
     {
-      "if": {"properties": {"event_type": {"const": "added_to_cart"}}},
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "added_to_cart"}}},
       "then": {
         "required": ["p_id", "qty", "price"],
         "properties": {
@@ -36,7 +36,7 @@
       }
     },
     {
-      "if": {"properties": {"event_type": {"const": "order_placed"}}},
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "order_placed"}}},
       "then": {
         "required": ["order_id", "payment_method", "amount", "currency", "items"],
         "properties": {
