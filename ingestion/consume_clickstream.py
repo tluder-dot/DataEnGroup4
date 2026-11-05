@@ -58,9 +58,12 @@ def write(rows, root):
     # A timestamp in the filename, so two runs never overwrite each other.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     for dt, part in df.groupby("dt"):
-        folder = os.path.join(root, f"dt={dt}")
-        os.makedirs(folder, exist_ok=True)
-        path = os.path.join(folder, f"part-{stamp}.parquet")
+        folder = f"{root}/dt={dt}"
+        # A gs:// path is an object prefix, not a folder: there is nothing to
+        # create, and os.makedirs would make a local folder named "gs:".
+        if not root.startswith("gs://"):
+            os.makedirs(folder, exist_ok=True)
+        path = f"{folder}/part-{stamp}.parquet"
         # drop the dt column: it is in the path, and storing it twice is the
         # small-file tax from lesson 2 paid for nothing.
         part.drop(columns=["dt"]).to_parquet(path, index=False)
