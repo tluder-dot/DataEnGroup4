@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Albert's Marketplace clickstream event, schema_version 1",
+  "description": "Checked by ingestion/consume_clickstream.py before an event enters bronze. Fields not listed here are accepted and kept.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "event_type", "event_time", "emitted_at", "session_id", "buyer_id"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"enum": ["product_viewed", "added_to_cart", "order_placed"]},
+    "event_time": {"$ref": "#/$defs/timestamp"},
+    "emitted_at": {"$ref": "#/$defs/timestamp"},
+    "session_id": {"type": "string", "minLength": 1},
+    "buyer_id": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "product_viewed"}}},
+      "then": {
+        "required": ["p_id", "price"],
+        "properties": {
+          "p_id": {"type": "string", "minLength": 1},
+          "price": {"type": "number"}
+        }
+      }
+    },
+    {
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "added_to_cart"}}},
+      "then": {
+        "required": ["p_id", "qty", "price"],
+        "properties": {
+          "p_id": {"type": "string", "minLength": 1},
+          "qty": {"type": "integer"},
+          "price": {"type": "number"}
+        }
+      }
+    },
+    {
+      "if": {"required": ["event_type"], "properties": {"event_type": {"const": "order_placed"}}},
+      "then": {
+        "required": ["order_id", "payment_method", "amount", "currency", "items"],
+        "properties": {
+          "order_id": {"type": "integer"},
+          "payment_method": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["p_id", "qty", "price"],
+              "properties": {
+                "p_id": {"type": "string", "minLength": 1},
+                "qty": {"type": "integer"},
+                "price": {"type": "number"}
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    }
+  }
+}

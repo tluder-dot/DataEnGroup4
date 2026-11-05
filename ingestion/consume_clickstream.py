@@ -1,0 +1,157 @@
+"""Read clickstream events from Kafka and land them in bronze as partitioned Parquet.
+
+Delivery guarantee: at least once, because flush() writes each file to the
+bucket before it commits the Kafka offset, so a crash between the two re-reads
+the batch and writes some events twice, but never loses one.
+
+Files are partitioned by event_time (dt=YYYY-MM-DD), the same simulated clock
+as order_date, so a day of clicks lines up with the same day of orders.
+emitted_at stays a column, so a later layer can partition by arrival instead.
+Rejected events go to the DLQ, partitioned by the time they were rejected.
+"""
+
+import json
+import os
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+from confluent_kafka import Consumer
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import best_match
+
+# Everything that changes between runs arrives in the environment, which is
+# what lets the same file serve the demo, the exercise and your project.
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP", "localhost:9092")
+TOPIC = os.environ.get("KAFKA_TOPIC", "clickstream")
+# Square brackets, so a missing group fails immediately and loudly. It has no
+# sensible default: the group IS where Kafka stores how far you have read, so
+# picking one for you would silently resume somebody else's progress.
+GROUP = os.environ["CONSUMER_GROUP"]           # your own: clickstream-<initials>
+# Group 4's bronze layer by default. For a local test, set OUT and DLQ to a
+# folder such as out/bronze/clickstream, so test rows never reach bronze.
+OUT = os.environ.get("OUT", "gs://data-engineering-i1-g04/bronze/clickstream")
+DLQ = os.environ.get("DLQ", "gs://data-engineering-i1-g04/bronze/_dlq/clickstream")
+BATCH = int(os.environ.get("BATCH", "200"))    # rows per file
+# Seconds between writing and committing. 0 in normal use; the demo sets it to
+# 20 so the window is wide enough to kill the process inside.
+PAUSE = float(os.environ.get("PAUSE_BEFORE_COMMIT", "0"))
+
+# One validator per schema_version: each event is checked against the schema
+# of the version it says it is. A new version adds a file and a line here.
+SCHEMAS = {
+    1: Draft202012Validator(json.loads(
+        Path(__file__).with_name("clickstream.schema.json").read_text())),
+}
+
+consumer = Consumer({
+    "bootstrap.servers": BOOTSTRAP,
+    "group.id": GROUP,
+    # Start from the beginning when this group has never read before. A new
+    # group name therefore replays the whole topic, which is how you re-run the
+    # exercise from scratch.
+    "auto.offset.reset": "earliest",
+    "enable.auto.commit": False,               # committed by hand. That is the lesson.
+})
+consumer.subscribe([TOPIC])
+
+# Accumulated between flushes: good rows, quarantined rows, and a running total
+# for the output.
+good, bad = [], []
+written = 0
+
+
+def write(rows, root):
+    """One Parquet file per event date, under dt=YYYY-MM-DD/."""
+    df = pd.DataFrame(rows)
+    # Filed by event_time: the day it happened, not the day it reached us.
+    # Late-arriving events therefore land in the day they belong to, which is
+    # the only way a day's partition is ever complete.
+    df["dt"] = pd.to_datetime(df["event_time"], format="mixed").dt.strftime("%Y-%m-%d")
+    # A timestamp in the filename, so two runs never overwrite each other.
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    for dt, part in df.groupby("dt"):
+        folder = f"{root}/dt={dt}"
+        # A gs:// path is an object prefix, not a folder: there is nothing to
+        # create, and os.makedirs would make a local folder named "gs:".
+        if not root.startswith("gs://"):
+            os.makedirs(folder, exist_ok=True)
+        path = f"{folder}/part-{stamp}.parquet"
+        # drop the dt column: it is in the path, and storing it twice is the
+        # small-file tax from lesson 2 paid for nothing.
+        part.drop(columns=["dt"]).to_parquet(path, index=False)
+        print(f"  wrote {len(part):4d} rows  {path}")
+
+
+def flush():
+    """Write everything buffered, then commit. In that order, on purpose."""
+    global good, bad, written
+    if not good and not bad:
+        return
+    if good:
+        write(good, OUT)
+        written += len(good)
+    if bad:
+        write(bad, DLQ)                        # the reason travels with the row
+        print(f"  {len(bad)} row(s) quarantined")
+    # The window. Everything above has happened; nothing below has.
+    #
+    # Crash here and the offset is NOT committed, so the next run reads this
+    # batch again and writes some rows twice - at-least-once. Swap these two
+    # steps and a crash here loses the batch instead, permanently and without
+    # a word: at-most-once. Duplicates you can find and remove. Silence you
+    # cannot.
+    if PAUSE:
+        print(f"  ... {PAUSE}s before committing the offset. Kill me now.")
+        time.sleep(PAUSE)
+    # asynchronous=False: do not return until Kafka has stored the offset, so
+    # "committed" in the log means committed.
+    consumer.commit(asynchronous=False)
+    print(f"  offset committed   (rows written so far: {written})")
+    good, bad = [], []
+
+
+print(f"reading {TOPIC} from {BOOTSTRAP} as group {GROUP}")
+print(f"writing to {OUT}\n")
+try:
+    while True:
+        # Wait up to a second for a message. None means the topic is quiet.
+        msg = consumer.poll(1.0)
+        if msg is None:
+            flush()                            # idle: write what we have
+            continue
+        if msg.error():
+            print(f"  kafka error: {msg.error()}")
+            continue
+        raw = msg.value().decode("utf-8")
+        try:
+            event = json.loads(raw)
+            if not isinstance(event, dict):
+                raise ValueError("not a JSON object")
+            version = event.get("schema_version")
+            if version not in SCHEMAS:
+                raise ValueError(f"unknown schema_version: {version!r}")
+            error = best_match(SCHEMAS[version].iter_errors(event))
+            if error is not None:
+                raise ValueError(f"schema v{version}: {error.message}")
+            # The schema checks the shape of event_time; this checks it is a
+            # real date, so one impossible date cannot crash write() for the
+            # whole batch.
+            datetime.fromisoformat(event["event_time"].replace("Z", "+00:00"))
+            good.append(event)
+        except Exception as exc:               # malformed: quarantine, never drop
+            # Everything needed to find the message again goes with it: one bad
+            # row must never stop the stream, and must never vanish either.
+            bad.append({"raw": raw, "reason": str(exc),
+                        "event_time": datetime.now(timezone.utc).isoformat(),
+                        "topic": msg.topic(), "partition": msg.partition(),
+                        "offset": msg.offset()})
+        if len(good) + len(bad) >= BATCH:
+            flush()
+except KeyboardInterrupt:
+    # Not a tidy shutdown. os._exit skips every cleanup handler, so nothing is
+    # flushed and nothing is committed - which is what a crash looks like, and
+    # what section 4 of the demo needs it to look like.
+    print("\nkilled")
+    os._exit(1)
