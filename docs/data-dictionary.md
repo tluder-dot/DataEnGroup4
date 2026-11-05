@@ -95,6 +95,13 @@ Two paths into bronze so far:
   schema to `bronze/_dlq/clickstream/`. Its types are under
   [Clickstream](#clickstream).
 
+**No Airbyte path.** Airbyte would add `_airbyte_raw_id`,
+`_airbyte_extracted_at`, `_airbyte_meta` and `_airbyte_generation_id` to every
+table it lands. Without a service account it cannot reach our bucket, so no
+table in bronze has these columns. The extractor (T2) is planned to add none.
+Until it is merged, every table in bronze comes from the export, and the
+events from the clickstream consumer.
+
 **Types.** Every column is `STRING`, except:
 
 | Bronze type | Columns |
