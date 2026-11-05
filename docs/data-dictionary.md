@@ -49,6 +49,7 @@ added after the original extract, do not have it. The tables below list it as
 | `review_images` | `review_img` unclassified |
 | `seller`, `seller_products`, `seller_reviews` | `seller_id` (and `seller.seller_name`, empty) |
 | `customer_shipping`, `customer_payment`, `subscription` | `c_id` |
+| `clickstream` events | `buyer_id` (`session_id` is not, see [Clickstream](#clickstream)) |
 
 **Never ingested:** `customer.pwd`, `payment_details.card_no` and
 `payment_details.cvv`, in bold above.
@@ -81,9 +82,18 @@ place in silver (L05).
 
 ## In bronze
 
-All 27 tables came into bronze through one path so far: the export, landed by
-[`ingestion/land_export.py`](../ingestion/land_export.py) and read as
-`g04_bronze_1.<table>_external` ([ADR 0002](adr/0002-bronze-layout.md)).
+Two paths into bronze so far:
+
+- **The export:** all 27 tables, landed by
+  [`ingestion/land_export.py`](../ingestion/land_export.py) and read as
+  `g04_bronze_1.<table>_external` ([ADR 0002](adr/0002-bronze-layout.md)).
+  Its types are below.
+- **The clickstream:** the events, landed by
+  [`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py)
+  into `bronze/clickstream/dt=YYYY-MM-DD/`. It adds no column: `dt` is in
+  the path, not in the files. It leaves nothing out, and sends what fails the
+  schema to `bronze/_dlq/clickstream/`. Its types are under
+  [Clickstream](#clickstream).
 
 **Types.** Every column is `STRING`, except:
 
@@ -106,9 +116,7 @@ tables, 126 columns, 74 of them `STRING`.
 
 ## Still to add
 
-- **The clickstream events** (L03, Jane).
-- **The extractor's and the clickstream consumer's paths into bronze,** and the
-  columns each adds (L03). There is no Airbyte path: without a service account
+- **The extractor's path into bronze,** and the columns it adds (L03, Till). There is no Airbyte path: without a service account
   it cannot reach our bucket.
 
 ---
