@@ -14,9 +14,12 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 from confluent_kafka import Consumer
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import best_match
 
 # Everything that changes between runs arrives in the environment, which is
 # what lets the same file serve the demo, the exercise and your project.
@@ -35,9 +38,12 @@ BATCH = int(os.environ.get("BATCH", "200"))    # rows per file
 # 20 so the window is wide enough to kill the process inside.
 PAUSE = float(os.environ.get("PAUSE_BEFORE_COMMIT", "0"))
 
-# A row missing any of these cannot be filed by date or joined to anything, so
-# it goes to the dead-letter path rather than into bronze.
-REQUIRED = ("event_id", "event_type", "event_time", "buyer_id")
+# One validator per schema_version: each event is checked against the schema
+# of the version it says it is. A new version adds a file and a line here.
+SCHEMAS = {
+    1: Draft202012Validator(json.loads(
+        Path(__file__).with_name("clickstream.schema.json").read_text())),
+}
 
 consumer = Consumer({
     "bootstrap.servers": BOOTSTRAP,
@@ -121,9 +127,18 @@ try:
         raw = msg.value().decode("utf-8")
         try:
             event = json.loads(raw)
-            missing = [f for f in REQUIRED if f not in event]
-            if missing:
-                raise ValueError(f"missing field(s): {', '.join(missing)}")
+            if not isinstance(event, dict):
+                raise ValueError("not a JSON object")
+            version = event.get("schema_version")
+            if version not in SCHEMAS:
+                raise ValueError(f"unknown schema_version: {version!r}")
+            error = best_match(SCHEMAS[version].iter_errors(event))
+            if error is not None:
+                raise ValueError(f"schema v{version}: {error.message}")
+            # The schema checks the shape of event_time; this checks it is a
+            # real date, so one impossible date cannot crash write() for the
+            # whole batch.
+            datetime.fromisoformat(event["event_time"].replace("Z", "+00:00"))
             good.append(event)
         except Exception as exc:               # malformed: quarantine, never drop
             # Everything needed to find the message again goes with it: one bad
