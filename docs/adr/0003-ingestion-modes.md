@@ -60,7 +60,8 @@ The tests and their commands are in
 - **Possible with our access:** personal logins, no service account, no
   scheduler before L07.
 - **Effort at our size:** silver deduplicates in one query; an exactly once
-  write would be a project of its own.
+  write would be a project of its own. The course plans the same split: the
+  step 3 brief ends with "lesson 5 removes the duplicates".
 
 ## Decision
 
