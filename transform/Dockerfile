@@ -11,8 +11,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DBT_PROFILES_DIR=/usr/app
 
-# dbt-bigquery pinned, the version the course and transform/README.md use.
-RUN pip install --no-cache-dir dbt-bigquery==1.12.1 \
+# Every package pinned, dbt-core included: pinning only the adapter let pip
+# pick dbt-core 1.13.0-rc1, a release candidate, on 6 November.
+COPY transform/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && useradd --create-home --uid 10001 dbt
 
 WORKDIR /usr/app
