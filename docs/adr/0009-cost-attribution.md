@@ -18,8 +18,8 @@ project-wide jobs (`JOBS_BY_PROJECT` is refused; the Billing API answered 403 on
 | Our monthly cost, at list price | $0.0077 (storage), $0 billed for queries | [Ledger](../costs.md), 6 Nov 2026 |
 | Resources to attribute | 6: the data bucket, 4 datasets, the state bucket | [infra](../infra.md) |
 | Other groups in the project | Yes: the rule is to touch only resources starting with `g04`. How many, we do not know | `CLAUDE.md` |
-| What Terraform can tag | The bucket and the 4 datasets, through the `labels` argument | `infra/terraform/main.tf` |
-| What labels cannot tag | Charges made before the label; the bytes a query processes (they belong to the job) | [costs](../costs.md), "What this does not attribute" |
+| What Terraform can label | The bucket and the 4 datasets, through the `labels` argument | `infra/terraform/main.tf` |
+| What labels cannot label | Charges made before the label; the bytes a query processes (they belong to the job) | [costs](../costs.md), "What this does not attribute" |
 | Can we create a project | Not tried. The course gives us this one, and we have no billing rights | Course; the 403 on the Billing API, 6 Nov |
 
 ## Options considered
@@ -28,7 +28,7 @@ project-wide jobs (`JOBS_BY_PROJECT` is refused; the Billing API answered 403 on
 |---|---|---|
 | **Labels** on each resource | Works inside a shared project; appears in billing reports and the export; set by Terraform and reviewed in a pull request | Forward only. Does not tag query jobs unless the job sets a label. A missing or mistyped label silently drops a resource out of the report |
 | **One project per team** | The cleanest cut: the invoice, quotas and IAM are per project, and nothing can be missed | Not available to us: the course gives one project. In a company it costs more setup per team and makes shared data harder to reach |
-| **Network tags** | Familiar from Compute | Tags apply to Compute Engine instances for firewall rules and routes. They are not a billing dimension and do not exist on buckets or datasets. Not usable here |
+| **Resource tags** (instead of labels) | Defined once at organisation or project level and inherited by the resources below; usable in IAM and organisation policy, so a rule can be enforced, not only reported; they reach billing | Need organisation-level setup and permissions we do not have (we cannot read the project's IAM policy). Not tried: we have no organisation-level rights that we know of. Labels are the only one of the two we can set |
 | **Split the bill by hand** (by headcount or by usage in a spreadsheet) | No setup | Someone redoes it every month and it reflects a guess. Cannot say which resource caused a spike |
 
 ## Criteria
@@ -42,7 +42,7 @@ project-wide jobs (`JOBS_BY_PROJECT` is refused; the Billing API answered 403 on
 |---|---|---|---|---|
 | Labels | Yes | Yes (Terraform) | Yes | The past; query bytes unless the job is labelled |
 | Project per team | Not offered | Yes | No: only team-level | Little |
-| Tags | No | n/a | No | Everything we run |
+| Resource tags | No: needs organisation-level rights | Yes, once set up | Yes | Nothing, if they could be set |
 | By hand | Yes | No | No | Whatever the person guesses wrong |
 
 ## Decision
@@ -59,7 +59,7 @@ is visible in review. The labels are in the plan, so a reviewer sees them.
 
 **What stays hard.**
 
-- Nothing before 6 Nov 2026 is tagged, and query cost is not tagged at all
+- Nothing before 6 Nov 2026 is labelled, and query cost is not labelled at all
   until `warehouse/measure.py` and dbt set job labels. Not done.
 - A label added by hand is invisible to `terraform plan` (the provider only
   compares the keys the code declares). A label removed by hand is caught.
@@ -75,6 +75,7 @@ changes:
   own. It is what a company with ten teams would do, and what we would ask the
   course for.
 - **Keep labels inside each project** for the layer and the lesson, and enforce
-  the keys with an organisation policy or a CI check on `.tf` files, which
-  could be added to the workflow in [`.github/workflows/terraform.yml`](../../.github/workflows/terraform.yml).
+  the keys. Resource tags are the tool made for that (inherited, and usable in
+  organisation policy), but need the organisation-level setup we lack. Short of
+  that, a CI check on the `.tf` files could be added to the workflow in [`.github/workflows/terraform.yml`](../../.github/workflows/terraform.yml).
 - **Splitting by hand does not scale:** ten teams means ten sets of guesses.
