@@ -3,3 +3,5 @@ pyarrow==26.0.1
 confluent-kafka==2.16.1
 gcsfs==2026.10.1
 jsonschema==4.26.0
+fsspec==2026.9.0
+psycopg[binary]==3.3.6
