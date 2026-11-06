@@ -1,0 +1,36 @@
+# Everything here stays out of every image built from the repo root.
+# Secrets first: an image is a file anyone who pulls it can unpack, so a .env
+# or a key copied into it is published with it.
+**/.env
+**/.env.*
+**/*-key.json
+**/*credentials*.json
+**/service-account*.json
+
+# Local tooling and output: no use inside an image, and it makes the build
+# context, and every build, slower.
+.git
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+out/
+data/
+**/*.parquet
+
+# The legacy export holds plaintext passwords and card numbers.
+**/*.csv
+!transform/seeds/*.csv
+legacy_csv/
+*.tar.gz
+
+# dbt's own output, rebuilt at run time.
+transform/target/
+transform/dbt_packages/
+transform/logs/
+
+# Folders no image needs.
+docs/
+infra/
+warehouse/
+orchestration/
