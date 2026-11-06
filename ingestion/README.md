@@ -48,3 +48,10 @@ do TABLE=$t python ingestion/extract_orders.py; done
 
 For a local test, set `OUT` to a folder. `CURSOR_OP`, `RETRIES` and
 `RETRY_DELAY` are settings too.
+
+## The clickstream: `consume_clickstream.py`
+
+Reads the topic `clickstream` and lands the events in
+`bronze/clickstream/dt=YYYY-MM-DD/`, with the rejected ones in
+`bronze/_dlq/clickstream/`. [clickstream_external.sql](clickstream_external.sql)
+makes them readable as `g04_bronze_1.clickstream_external`.
