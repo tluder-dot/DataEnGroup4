@@ -62,3 +62,44 @@ step 4.
   every day would pay 9.7 GiB × $0.01 × 30 = $2.91 per month at 100×, against
   $0.19 for keeping it in Standard. Such a job means changing the lifecycle
   rule.
+
+## Step 4: the BigQuery warehouse
+
+Two meters: **storage** of the native tables and views, and **bytes processed**
+by queries. Prices: storage $0.020 per GiB-month, $0.010 after 90 days
+untouched; queries $7.50 per TiB in `europe-west1`, the first 1 TiB per month
+free. Both from the course's lecture 4, read 24 September 2026; the free tier
+confirmed on [cloud.google.com/bigquery/pricing](https://cloud.google.com/bigquery/pricing)
+on 5 November 2026 (that page shows $6.25 per TiB for the US regions and no
+single Europe row, so we kept the course's figure).
+
+Measured on 5 November 2026 in `g04_warehouse`:
+
+- **15 tables:** 232,719,290 bytes (0.2167 GiB).
+- **3 materialised views:** 34,978,600 bytes (0.0326 GiB).
+
+| Cost | Calculation | Amount |
+|---|---|---|
+| Storage of the tables | 0.2167 GiB × $0.020 | $0.0043 per month |
+| Storage of the views | 0.0326 GiB × $0.020 | $0.0007 per month |
+| **Storage, first 90 days** | | **$0.0050 per month** |
+| Storage after 90 days untouched | 0.2493 GiB × $0.010 | $0.0025 per month |
+| Q1, Q2, Q3 tuned ([tuning](warehouse-tuning.md)) | 3,373,224 + 1,000,888 + 4,007,592 bytes ÷ 2^40 × $7.50 | $0.00006 per run of all three |
+| One person's working day of building and measuring | 108 SELECT jobs, 925,676,327 bytes ÷ 2^40 × $7.50 | $0.0063, **inside the free tier, so billed $0** |
+
+**About $0.005 per month for the warehouse.** Queries bill nothing: one heavy
+day is 0.00084 TiB, and a month of such days is 0.025 TiB against 1 TiB free
+([ADR 0004](adr/0004-warehouse-pricing.md)).
+
+- **We keep 15 tables for 7 sources.** The untuned copies and the variants
+  (`order_items_day`, `_year_pc`, ...) exist to measure. They cost
+  $0.0043 per month together and can be dropped once the tuning page is
+  accepted, keeping `orders_month`, `order_items_month_pc` and the lookups.
+- **The capped worst case per query** is 104,857,600 bytes ÷ 2^40 × $7.50 =
+  $0.0007.
+- **At 1,000× the data** the tables would be 249 GiB, $4.99 per month in
+  storage, and a full scan 0.24 TiB, $1.83 per query (before the free tier).
+  A partition filter and the cap decide whether that happens.
+- **Not measured:** the bill itself. We cannot read project-wide billing or
+  `JOBS_BY_PROJECT`; the figures come from our own jobs
+  (`INFORMATION_SCHEMA.JOBS_BY_USER`).
