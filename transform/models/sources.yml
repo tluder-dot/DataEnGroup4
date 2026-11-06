@@ -1,0 +1,86 @@
+version: 2
+
+sources:
+  - name: marketplace
+    description: >
+      Bronze: the external tables over the export and the clickstream. Read by
+      dbt, never written. The tables run nightly from L07, so each threshold
+      says what breaks, and for whom, when a load is missed. Freshness reads
+      the table's last-modified time, which moves when the table is recreated,
+      not when a file lands: a loading job must recreate its table, or the
+      check stays stale. The clickstream has a real time column, so it uses that.
+    database: data-engineering-i1
+    schema: g04_bronze_1
+    tables:
+      - name: orders
+        identifier: orders_external
+        description: >
+          Warn after 25 hours: one nightly load was missed, and analysts report
+          yesterday's revenue as today's. Error after 49 hours: two were missed,
+          and the ML team trains on demand that stops two days short.
+        config:
+          freshness:
+            warn_after: {count: 25, period: hour}
+            error_after: {count: 49, period: hour}
+      - name: order_items
+        identifier: order_items_external
+        description: Same thresholds as orders, because revenue needs both on the same day.
+        config:
+          freshness:
+            warn_after: {count: 25, period: hour}
+            error_after: {count: 49, period: hour}
+      - name: product
+        identifier: product_external
+        description: >
+          Warn after 3 days, error after 7. Facts use the price paid, so a stale
+          catalogue only leaves new products without a name in dim_product.
+        config:
+          freshness:
+            warn_after: {count: 3, period: day}
+            error_after: {count: 7, period: day}
+      - name: category
+        identifier: category_external
+        description: No freshness. Two rows that have not changed since the export.
+      - name: review
+        identifier: review_external
+        description: >
+          Warn after 7 days, error after 14. Ratings move slowly: a product's
+          average barely changes in a week, and only marketing reads it.
+        config:
+          freshness:
+            warn_after: {count: 7, period: day}
+            error_after: {count: 14, period: day}
+      - name: product_reviews
+        identifier: product_reviews_external
+        description: Same thresholds as review, because the ratings need both.
+        config:
+          freshness:
+            warn_after: {count: 7, period: day}
+            error_after: {count: 14, period: day}
+      - name: customer_shipping
+        identifier: customer_shipping_external
+        description: >
+          Warn after 14 days, error after 30. A stale address only matters when
+          a buyer moves country, and that moves a few rows of daily demand.
+        config:
+          freshness:
+            warn_after: {count: 14, period: day}
+            error_after: {count: 30, period: day}
+      - name: shipping_details
+        identifier: shipping_details_external
+        description: Same thresholds as customer_shipping, because the country needs both.
+        config:
+          freshness:
+            warn_after: {count: 14, period: day}
+            error_after: {count: 30, period: day}
+      - name: clickstream
+        identifier: clickstream_external
+        description: >
+          Warn after 1 day, error after 5. Kafka deletes events after 7 days, so
+          an error still leaves two days to restart the consumer before events
+          are lost for good.
+        config:
+          loaded_at_field: "TIMESTAMP(emitted_at)"
+          freshness:
+            warn_after: {count: 1, period: day}
+            error_after: {count: 5, period: day}

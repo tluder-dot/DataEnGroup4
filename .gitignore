@@ -13,6 +13,7 @@ data/
 # The legacy export and anything copied from it: it holds plaintext passwords
 # and card numbers (synthetic, but never committed)
 *.csv
+!transform/seeds/*.csv
 *.tar.gz
 legacy_csv/
 
@@ -26,9 +27,10 @@ __pycache__/
 venv/
 
 # dbt
-dbt/target/
-dbt/dbt_packages/
-dbt/logs/
+transform/target/
+transform/dbt_packages/
+transform/logs/
+transform/.user.yml
 
 # Terraform (the .terraform.lock.hcl file is committed on purpose)
 .terraform/

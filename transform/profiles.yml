@@ -1,0 +1,13 @@
+# No secret here: dbt connects as you, with your application default login.
+# To build in a dataset of your own: DBT_DATASET=l05_<initials>.
+albert:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: data-engineering-i1
+      dataset: "{{ env_var('DBT_DATASET', 'g04') }}"
+      location: europe-west1
+      threads: 4
+      maximum_bytes_billed: 104857600  # 100 MiB, ADR 0004

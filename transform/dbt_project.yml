@@ -1,0 +1,26 @@
+name: 'albert'
+version: '1.0.0'
+profile: 'albert'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+
+# Views for silver, tables for gold: docs/adr/0005-materialisations.md.
+# dbt adds +schema to the profile's dataset: g04 gives g04_silver and g04_gold.
+models:
+  albert:
+    +labels: {group: g04}
+    staging:
+      +materialized: view
+      +schema: silver
+    intermediate:
+      +materialized: view
+      +schema: silver
+    marts:
+      +materialized: table
+      +schema: gold
+
+seeds:
+  albert:
+    +schema: silver

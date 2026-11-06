@@ -2,8 +2,12 @@
 
 The ML team's request: **units sold per product, per country, per day.**
 
-The figures below come from the v1.0.0 export (`legacy_csv`). We build this
-table for real, with tests, in L05.
+The figures below come from the v1.0.0 export (`legacy_csv`), before the twin
+orders were removed. **Built in L05** as
+[`fct_daily_demand`](../../transform/models/marts/fct_daily_demand.sql): 203,427
+rows and 693,316 units, half of what the sketch counts. Gold keys on `p_id`,
+`country` and `order_date` instead of the surrogate keys sketched here, and
+`dim_product` adds the ratings.
 
 ## 1. Business process
 

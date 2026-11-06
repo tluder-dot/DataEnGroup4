@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Orders as they arrived, twins included. GRAIN: one row in bronze's orders."
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: buyer_id
+        tests: [not_null]
+      - name: order_date
+        tests: [not_null]
+
+  - name: stg_order_items
+    description: "GRAIN: one product in one order."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [order_id, p_id]
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: qty
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+
+  - name: stg_product
+    description: "GRAIN: one product. product_name is NULL for the 6 products with no name."
+    columns:
+      - name: p_id
+        tests: [unique, not_null]
+
+  - name: stg_category
+    description: "GRAIN: one category."
+    columns:
+      - name: category_id
+        tests: [unique, not_null]
+
+  - name: stg_review
+    description: "GRAIN: one review. review_text is NULL when the text was blank."
+    columns:
+      - name: review_id
+        tests: [unique, not_null]
+      - name: rating
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 5
+
+  - name: stg_product_reviews
+    description: "Bridge. GRAIN: one product and one review."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [p_id, review_id]
+
+  - name: stg_customer_shipping
+    description: "GRAIN: one address of one buyer."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [address_id, buyer_id]
+
+  - name: stg_shipping_details
+    description: "GRAIN: one address."
+    columns:
+      - name: address_id
+        tests: [unique, not_null]
+      - name: country
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('country_codes')
+                field: country
+
+  - name: stg_clickstream
+    description: "GRAIN: one event, whatever the consumer delivered twice."
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
