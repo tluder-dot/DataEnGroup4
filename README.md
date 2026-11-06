@@ -29,12 +29,12 @@ the end of the course it holds the platform your group defends orally:
 | L02 · Object storage foundations | Bronze layer on Cloud Storage, data dictionary v1 | `docs/` |
 | L03 · Batch, streaming, CDC | Ingestion pipelines | `ingestion/` |
 | L04 · SQL warehouses | Warehouse tables, three costed queries | `docs/` |
-| L05 · dbt and the medallion pattern | Silver and gold models, tests | `dbt/` |
-| L06 · Packaging data jobs | Dockerfiles for the ingestion job and dbt | `ingestion/`, `dbt/` |
+| L05 · dbt and the medallion pattern | Silver and gold models, tests | `transform/` |
+| L06 · Packaging data jobs | Dockerfiles for the ingestion job and dbt | `ingestion/`, `transform/` |
 | L07 · Airflow | A scheduled DAG | `orchestration/` |
 | L08 · Terraform | The platform as code, `terraform plan` in CI | `infra/`, `.github/workflows/` |
 | L09 · FinOps | Labels, a budget alert, one measured optimisation | `infra/`, `docs/` |
-| L10 · Security and governance | Least-privilege access, PII redaction, data classification | `infra/`, `dbt/`, `docs/` |
+| L10 · Security and governance | Least-privilege access, PII redaction, data classification | `infra/`, `transform/`, `docs/` |
 
 Starter files for later lessons arrive as **pull requests** opened by the
 teaching team. Review and merge them like any other change.
@@ -65,7 +65,7 @@ docs/
   adr/               architecture decision records
   model/             dimensional model sketches
 ingestion/           from L03
-dbt/                 from L05
+transform/           from L05
 orchestration/       from L07
 infra/               from L08
 ```
