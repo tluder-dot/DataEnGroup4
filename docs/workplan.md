@@ -15,8 +15,8 @@ workaround with Airflow.
 
 | Member | Owns | ADR | PRs reviewed by |
 |---|---|---|---|
-| **Till** | Steps 1 and 2, the extractor (full batch and incremental), data dictionary, `docs/architecture.md` | 0001 (done), 0002 | Jane |
-| **Jane** | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes | 0003 | Evaluna |
+| **Till** | Steps 1 and 2, the extractor, data dictionary, `docs/architecture.md` | 0001, 0002 | Jane |
+| **Jane** | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes | 0003 | Till |
 | **Enzo** | Step 4: native tables, tuning, materialised view, cost cap, runbook | 0004 | Jane |
 | **Evaluna** | Tasks from session 5 on | | |
 
@@ -24,134 +24,67 @@ workaround with Airflow.
   landing script (#10); her next tasks come with the later steps.
 - **For now, Jane approves and merges Till's PRs.** For every other PR, the
   reviewer approves and the author merges.
-- **Everyone:** write your role in the README team table, as a commit of your
-  own on the branch `docs/team-roles` (#19). Jane merges it once all four
-  rows are filled.
+- **A review says what was checked,** and comes before the merge.
 - At the defence, everyone is asked about an ADR they did not write.
 
-## Till
+## Where each step stands
 
-**T1 · Step 1 and repo setup.** Done: #2 to #5, #7 and #8, merged on
-22 October.
+**Step 1:** done (#2 to #5, #7, #8).
 
-**T2 · Extractor:** `ingestion/extract_orders.py` (step 3, deliverable 2).
-- Plain SQL through a database driver (`psycopg`), no ORM. Credentials come
-  from `DATABASE_URL`. It writes to the bucket with the runner's own Google
-  login: no key file.
-- The table is a setting (`TABLE`), as in the L06 demo, so one script carries
-  seven tables: `orders`, `order_items`, `review`, `product_reviews`,
-  `product`, `customer_shipping`, `shipping_details`.
-- Two modes:
-  - **Full batch, the default:** re-reads the whole table on every run. It
-    sees new rows, updates and deletes, and costs one full read per run,
-    nothing at this size.
-  - **Incremental,** as the brief asks: a cursor on `order_date` that survives
-    a restart, reading only the rows past it.
-- Selects columns by name, never `customer.pwd`, `payment_details.card_no` or
-  `cvv`.
-- Retries a failed connection with a growing delay, then gives up.
-- Writes Parquet into a bronze prefix of its own: `land_export.py` deletes
-  anything else under `bronze/<table>/`.
+**Step 2:** merged (#12 to #18), but none of these PRs has a submitted review.
 
-*Done when:* a full run matches the source's row count, a second incremental
-run reads only new rows, and a stopped database gives retries, then a clean
-failure. Record `>` versus `>=`, and what the incremental cursor misses that
-the full batch sees, for ADR 0003.
+**Step 3:**
 
-**T3 · Connector: dropped.** Without a service account, Airbyte cannot write
-to our bucket or BigQuery. T2's full batch carries the seven tables instead.
+| Deliverable | What | PR |
+|---|---|---|
+| 1 | Connector: dropped. Without a service account, Airbyte cannot reach our bucket or BigQuery (ADR 0003). The extractor carries the seven tables instead | |
+| 2 | `ingestion/extract_orders.py` | #32 |
+| 3 to 5 | `ingestion/consume_clickstream.py`, `clickstream.schema.json`, `bronze/_dlq/` | #21 |
+| 6 | `docs/ingestion-failure-modes.md` | #23, #32 |
+| 7 | ADR 0003 | #24, #32 |
+| 8 | The clickstream in the data dictionary | #22, #32 |
+| 9 | `docs/architecture.md` | #33 |
 
-**T4 · Data dictionary** (step 2, deliverable 3). v1 merged (#8), the bronze
-types in #17. Step 3 adds the extractor's and the consumer's paths.
+*Not met:* "three paths write without a human". A person starts each path until
+L07.
 
-**T5 · `docs/architecture.md`.** Step 2 is in #18. Still to add, last: step 3
-(three arrows into bronze), step 4 (the native tables), a change-log row per
-lesson, and ADRs 0003 and 0004 in the decisions table.
+**Step 4:** in #25 to #30, for Jane's review.
 
-## Till: step 2, bronze
+## Still to do
 
-Every deliverable is in a pull request, for Jane to review and merge.
+**Jane**
+- Review and merge this plan's PR first, then #32. #33 comes last, after #27
+  and #28: it links to them.
+- Review Enzo's #25 to #31.
+- Submit a review on #12 and #14, even after the merge: step 2 needs at least
+  one reviewed PR.
+- **J7 · Consumer fixes** (nothing waits for them):
+  - The same columns and types in every file, as declared in
+    `ingestion/clickstream_external.sql`. Today a batch without an order has no
+    `order_id`, and a batch of only cart events writes `qty` as an integer.
+  - Bigger files: not one file per quiet second. Files of 1 to 11 rows were
+    seen on 5 November.
+  - In the dead letter queue, `rejected_at` instead of `event_time`, which
+    holds the time of the rejection.
 
-| Task | Deliverable | What | PR |
-|---|---|---|---|
-| T6 · Bucket and dataset | | `gs://data-engineering-i1-g04` (Evaluna, 22 October), `g04_bronze_1` (3 November), readable by the four of us | #12 |
-| T7 · The export as partitioned Parquet | 1 | `ingestion/land_export.py`: 27 tables, without `pwd`, `card_no` and `cvv` | #10, #12 |
-| T8 · ADR 0002 | 2 | `docs/adr/0002-bronze-layout.md` | #14 |
-| T4 · Data dictionary v1 | 3 | `docs/data-dictionary.md` | #8, #17 |
-| T9 · Lifecycle and access as files | 4 | `infra/lifecycle.json` (applied), `infra/iam.md` | #15 |
-| T10 · Monthly cost | 5 | `docs/costs.md` | #16 |
-| T5 · Updated diagram | 6 | `docs/architecture.md` | #18 |
+**Enzo**
+- Merge #25 to #31 after Jane's approval: #25 and #26 first.
+- Confirm ADR 0004, then set it to accepted.
+- Take `projectReaders` and `projectWriters` off `g04_warehouse`, as on
+  `g04_bronze_1`: anyone with Viewer on the project can read it today.
 
-- **Merge order:** #13 first, so that `main` has this plan, then #12, then
-  #14 to #18. #18 links to #14 and #15.
-- **Evaluna deletes the old dataset `g04_bronze`:** the dataset only. The
-  bucket and its files stay.
+**Evaluna**
+- Delete the old dataset `g04_bronze`: the dataset only. The bucket and its
+  files stay.
+- Write your role in the README team table.
 
-*Done when* (the brief): partitioned Parquet and unmodified bronze, an ADR that
-argues from our own measurements, a dictionary that marks all personal data,
-infra files that match reality, costs that name prices and their date, a
-diagram that shows the bucket, every member committed, at least one reviewed
-PR.
-
-## Jane: step 3, the stream
-
-**J1 · Consumer:** `ingestion/consume_clickstream.py` (deliverable 3).
-- Start from the course's `consume_clickstream.py` (L03, Exercise 1 page).
-- It reads topic `clickstream` on `localhost:9092`.
-- It writes partitioned Parquet to
-  `gs://data-engineering-i1-g04/bronze/clickstream/`. Decide whether to
-  partition by `event_time` or `emitted_at`, and say why. If the upload is
-  refused, tell Till: our rights on the bucket come from course roles we
-  cannot list.
-- The docstring states the delivery guarantee in one sentence, and the code
-  matches it. For example, the offset is committed after the file is written:
-  at least once.
-
-**J2 · Schema and dead letter queue:** `ingestion/clickstream.schema.json`
-(deliverables 4 and 5).
-- A JSON Schema for the event: `schema_version`, `event_id`, `event_type`,
-  `event_time`, `emitted_at`, `session_id`, `buyer_id`, `p_id`, `qty`.
-- The consumer validates each event before accepting it, and
-  `schema_version` picks the schema.
-- Failed events go to `bronze/_dlq/clickstream/` with the row, the reason and
-  the time. One bad row must not stop the flow.
-
-*Done when:* a deliberately broken event, sent with
-`kafka-console-producer.sh`, sits in `_dlq/` and the consumer kept running.
-
-**J3 · The evidence** (L03 Exercise 1, steps A and B).
-- Kill the consumer between the write and the commit, restart it, then count
-  rows against distinct `event_id`: that gives the duplicate count.
-- CDC: create a slot, insert, update and delete a test product, peek at the
-  changes, note the slot size, then **drop the slot**. An unread slot holds
-  log on disk. Note which change an `order_date` cursor misses.
-
-**J4 · Failure modes:** `docs/ingestion-failure-modes.md` (deliverable 6).
-- A table: failure, handled?, by what, what happens.
-- It covers at least: new rows, updates, deletes, source down, malformed row,
-  schema change, duplicate after restart, expiring credential.
-- It says where credentials live: our personal Google logins and a local
-  `DATABASE_URL`, no service account (Charles). A login that expires stops the
-  pipeline: that is the "expiring credential" row.
-- At least one honest "not handled".
-
-**J5 · ADR 0003:** `docs/adr/0003-ingestion-modes.md` (deliverable 7).
-- The mode per source (the database tables, the clickstream).
-- For the database tables: full batch by default, incremental as the second
-  mode (T2).
-- At least one rejected option. Airbyte with CDC is one: without a service
-  account, it cannot reach our bucket or BigQuery (Charles).
-- Evidence from J3 and from Till's extractor.
-- The guarantee committed to, and what would force a change.
-
-**J6 · Clickstream in the data dictionary** (deliverable 8), once T4 is
-merged. Every field: type, meaning, and whether it is personal data. Answer
-it for `buyer_id` and `session_id`.
+**Till**
+- Review Jane's J7 PR.
 
 ## Enzo: step 4, the warehouse
 
-Bronze is in `g04_bronze_1` (T7), readable by Enzo. Before any measurement,
-turn the query cache off. Record **bytes processed**, never bytes billed:
+Bronze is in `g04_bronze_1`, readable by Enzo. Before any measurement, turn the
+query cache off. Record **bytes processed**, never bytes billed:
 billing has a 10 MiB minimum.
 
 **N1 · The working set as native tables:** dataset `g04_warehouse`
