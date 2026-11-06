@@ -1,0 +1,21 @@
+# terraform plan on 2026-11-06T14:40Z, after changing the description of g04_warehouse by hand (Python client, not Terraform)
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # google_bigquery_dataset.warehouse will be updated in-place
+  ~ resource "google_bigquery_dataset" "warehouse" {
+      ~ description                     = "Group 4: native tables for step 4 (L04), edited in the console" -> "Group 4: native tables for step 4 (L04)"
+        id                              = "projects/data-engineering-i1/datasets/g04_warehouse"
+        # (21 unchanged attributes hidden)
+
+        # (3 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
