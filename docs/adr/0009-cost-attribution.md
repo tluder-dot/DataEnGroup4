@@ -1,7 +1,7 @@
 # ADR-0009: Attribute cost with four resource labels
 
-- **Status:** proposed (Enzo to confirm or change the decision before review)
-- **Date:** 2026-11-06
+- **Status:** accepted
+- **Date:** 2026-11-06 (accepted by Enzo on 2026-11-06)
 - **Author:** Enzo Meret
 - **Lesson:** L09
 
