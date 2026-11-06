@@ -1,7 +1,7 @@
 # ADR-0008: Keep the Terraform state in a versioned Cloud Storage bucket
 
-- **Status:** proposed (Enzo to confirm or change the decision before review)
-- **Date:** 2026-11-06
+- **Status:** accepted
+- **Date:** 2026-11-06 (accepted by Enzo on 2026-11-06)
 - **Author:** Enzo Meret
 - **Lesson:** L08
 
