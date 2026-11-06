@@ -25,3 +25,26 @@ python ingestion/land_export.py --src <folder of the CSV files> --upload --exter
 
 If `gcloud storage rsync` stops with `gcloud-crc32c: command not found`, run
 `gcloud components install gcloud-crc32c` once.
+
+## The database tables: `extract_orders.py`
+
+Reads seven tables from PostgreSQL with plain SQL and writes Parquet under
+`gs://data-engineering-i1-g04/bronze/postgres/`, with your own Google login
+(`gcloud auth application-default login`). `DATABASE_URL` comes from your
+`.env`.
+
+| Mode | Set | Writes |
+|---|---|---|
+| Full batch, the default | `TABLE=<table>` | `bronze/postgres/<table>/`, replaced at each run |
+| Incremental, `orders` only | `MODE=incremental` | `bronze/postgres/_incremental/orders/`, one file per run, with the cursor in `bronze/postgres/_state/orders.json` |
+
+All seven tables:
+
+```
+set -a; source .env; set +a
+for t in orders order_items review product_reviews product customer_shipping shipping_details
+do TABLE=$t python ingestion/extract_orders.py; done
+```
+
+For a local test, set `OUT` to a folder. `CURSOR_OP`, `RETRIES` and
+`RETRY_DELAY` are settings too.
