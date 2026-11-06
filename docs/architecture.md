@@ -24,7 +24,7 @@ flowchart LR
 
   subgraph sources["Sources"]
     pg
-    kafka[["Kafka clickstream<br/>from L03"]]
+    kafka[["Kafka clickstream"]]
   end
 
   subgraph gcs["Cloud Storage · europe-west1"]
@@ -36,8 +36,8 @@ flowchart LR
     gold[("GOLD<br/>star schemas, one metric definition")]
   end
 
-  pg -- "daily extract, CDC from L03<br/>no card data, no passwords" --> bronze
-  kafka -- "events, from L03" --> bronze
+  pg -- "full batch<br/>no card data, no passwords" --> bronze
+  kafka -- "events, at least once" --> bronze
   bronze -- "dbt" --> silver
   silver -- "dbt" --> gold
 
@@ -47,8 +47,8 @@ flowchart LR
 
 Chosen in [ADR-0001](adr/0001-target-architecture.md): a **two-tier** platform.
 Raw files live in Cloud Storage, and the warehouse in BigQuery is built from
-them with dbt. Not yet decided: the extraction tool (L03) and the scheduler
-(L07).
+them with dbt. The extractor and the consumer are our own
+([ADR-0003](adr/0003-ingestion-modes.md)). Not yet decided: the scheduler (L07).
 
 **Two boundaries in the diagram matter:**
 
@@ -56,36 +56,54 @@ them with dbt. Not yet decided: the extraction tool (L03) and the scheduler
   reads the shop database.
 - **Gold:** consumers read nothing else. They never see bronze or silver.
 
-## What exists now (L02)
+## What exists now (L04)
 
 ```mermaid
 flowchart LR
   export[["legacy_csv export v1.0.0<br/>27 CSV files"]]
+  pg[("PostgreSQL<br/>shop database")]
+  kafka[["Kafka<br/>topic clickstream"]]
 
-  subgraph gcs["Cloud Storage · europe-west1 · gs://data-engineering-i1-g04"]
-    bronze[("bronze/{table}/part-0.parquet<br/>bronze/orders/order_year=YYYY/<br/>27 tables, 30 files, snappy Parquet")]
+  subgraph gcs["Cloud Storage · europe-west1 · gs://data-engineering-i1-g04/bronze/"]
+    landed[("{table}/<br/>27 tables from the export")]
+    live[("postgres/{table}/<br/>7 tables, live")]
+    stream[("clickstream/dt=YYYY-MM-DD/<br/>events")]
+    dlq[("_dlq/clickstream/<br/>rejected events")]
   end
 
-  subgraph bq["BigQuery · europe-west1 · g04_bronze_1"]
-    ext["{table}_external<br/>27 external tables"]
+  subgraph bq["BigQuery · europe-west1"]
+    ext["g04_bronze_1<br/>external tables"]
+    wh["g04_warehouse<br/>7 native tables"]
+    mv["3 materialised views<br/>daily demand"]
   end
 
-  export -- "land_export.py<br/>without pwd, card_no, cvv" --> bronze
-  bronze -.->|read in place| ext
-  group(["Till, Evaluna, Jane, Enzo"]) --> ext
+  export -- "land_export.py<br/>without pwd, card_no, cvv" --> landed
+  pg -- "extract_orders.py<br/>full batch, incremental" --> live
+  kafka -- "consume_clickstream.py<br/>at least once" --> stream
+  kafka -.->|fails the schema| dlq
+  landed -.->|read in place| ext
+  stream -.->|read in place| ext
+  ext -- "loaded once" --> wh
+  wh --> mv
 ```
 
 | What | Details | Who can read it |
 |---|---|---|
 | **Bucket** `gs://data-engineering-i1-g04` | `europe-west1`, Standard, uniform access. Files under `bronze/` move to Nearline at 30 days, Coldline at 90, Archive at 365; nothing is deleted ([lifecycle](../infra/README.md)) | The project's owners, editors and viewers, through the bucket's default bindings |
-| **Layout** | One folder per table, one file each; `orders` by year of `order_date` ([ADR-0002](adr/0002-bronze-layout.md)) | |
-| **Dataset** `g04_bronze_1` | 27 external tables over the files: nothing is copied into BigQuery | Till (owner), Evaluna, Jane, Enzo (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
+| **The export** | `bronze/<table>/`: one file per table, `orders` by year of `order_date` ([ADR-0002](adr/0002-bronze-layout.md)) | |
+| **The extractor** | `bronze/postgres/<table>/`: seven tables, replaced at each run. `bronze/postgres/_incremental/orders/` and a saved cursor ([ADR-0003](adr/0003-ingestion-modes.md)) | |
+| **The clickstream** | `bronze/clickstream/dt=YYYY-MM-DD/`, by `event_time`, at least once. Rejected events in `bronze/_dlq/clickstream/` | |
+| **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till (owner), Evaluna, Jane, Enzo (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
+| **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), and the project's owners, editors and viewers |
 
 **Not yet as in the target:**
 
 - **No service account** (Charles): jobs run as our own Google logins.
-- **The files do not record their load time,** and rerunning the landing
-  replaces them instead of adding new ones.
+- **Nothing runs on a schedule:** a person starts each path (L07).
+- **The warehouse was loaded once, from the export.** Nothing reads the
+  extractor's files yet.
+- **The files do not record their load time,** and rerunning the landing or a
+  full batch replaces them instead of adding new ones.
 
 ## Layers
 
@@ -101,6 +119,8 @@ flowchart LR
 |---|---|---|
 | [0001](adr/0001-target-architecture.md) | Two-tier: raw Parquet in Cloud Storage, silver and gold in BigQuery, built with dbt | Accepted |
 | [0002](adr/0002-bronze-layout.md) | Bronze as snappy Parquet, one folder per table, `orders` by year; the three secret columns are never read | Accepted |
+| [0003](adr/0003-ingestion-modes.md) | Database tables in full batch, with an incremental cursor as a second mode; the clickstream as a stream, at least once | Accepted |
+| [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Proposed |
 
 ## Change log
 
@@ -108,3 +128,5 @@ flowchart LR
 |---|---|
 | L01 | First version: target architecture, layer guarantees, ADR-0001 |
 | L02 | Bronze exists: the group bucket, its layout and lifecycle, `g04_bronze_1` and who can read it, ADR-0002 |
+| L03 | Three paths into bronze: the export, the extractor and the clickstream, with a dead letter queue. ADR-0003 |
+| L04 | The warehouse: seven native tables, the daily demand views, the query cap. ADR-0004 |
