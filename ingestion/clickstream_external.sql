@@ -20,7 +20,8 @@ CREATE OR REPLACE EXTERNAL TABLE `data-engineering-i1.g04_bronze_1.clickstream_e
   payment_method STRING,
   amount FLOAT64,
   currency STRING,
-  items ARRAY<STRUCT<p_id STRING, qty INT64, price FLOAT64>>
+  items ARRAY<STRUCT<p_id STRING, qty INT64, price FLOAT64>>,
+  extra_fields STRING
 )
 WITH PARTITION COLUMNS (dt DATE)
 OPTIONS (
