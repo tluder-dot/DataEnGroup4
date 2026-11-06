@@ -13,7 +13,7 @@ with remote state and `terraform plan` running on every pull request.
 | File | What | Applied with |
 |---|---|---|
 | [lifecycle.json](lifecycle.json) | The group bucket's lifecycle rule | `gcloud storage buckets update gs://data-engineering-i1-g04 --lifecycle-file=infra/lifecycle.json` |
-| [iam.md](iam.md) | Every binding on the bucket and on `g04_bronze_1` | The commands in the file |
+| [iam.md](iam.md) | Every binding on the bucket, `g04_bronze_1`, `g04_silver` and `g04_gold` | The commands in the file |
 
 Check that both still match:
 

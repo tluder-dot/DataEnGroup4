@@ -56,7 +56,7 @@ them with dbt. The extractor and the consumer are our own
   reads the shop database.
 - **Gold:** consumers read nothing else. They never see bronze or silver.
 
-## What exists now (L04)
+## What exists now (L05)
 
 ```mermaid
 flowchart LR
@@ -75,6 +75,8 @@ flowchart LR
     ext["g04_bronze_1<br/>external tables"]
     wh["g04_warehouse<br/>7 native tables"]
     mv["3 materialised views<br/>daily demand"]
+    silver["g04_silver<br/>13 views: one defect, one fix"]
+    gold["g04_gold<br/>2 facts, 3 dimensions"]
   end
 
   export -- "land_export.py<br/>without pwd, card_no, cvv" --> landed
@@ -85,6 +87,8 @@ flowchart LR
   stream -.->|read in place| ext
   ext -- "loaded once" --> wh
   wh --> mv
+  ext -- "dbt" --> silver
+  silver -- "dbt, tested" --> gold
 ```
 
 | What | Details | Who can read it |
@@ -96,12 +100,15 @@ flowchart LR
 | **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till (owner), Evaluna, Jane, Enzo (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
 | **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), and the project's owners, editors and viewers |
 
+| **Datasets** `g04_silver`, `g04_gold` | Built by dbt from `g04_bronze_1` ([transform/](../transform/README.md)): views for silver, tables for gold ([ADR-0005](adr/0005-materialisations.md)). Twins removed, every grain tested ([acceptance criteria](acceptance-criteria.md), [lineage](lineage.md)) | Till and Enzo (owners), Jane and Evaluna (BigQuery Data Editor), the project's owners ([access](../infra/iam.md)) |
+
 **Not yet as in the target:**
 
 - **No service account** (Charles): jobs run as our own Google logins.
 - **Nothing runs on a schedule:** a person starts each path (L07).
-- **The warehouse was loaded once, from the export.** Nothing reads the
-  extractor's files yet.
+- **Silver and the warehouse read the export.** Nothing reads the extractor's
+  files yet.
+- **Silver still holds buyer IDs,** not pseudonymised (L10). Gold holds none.
 - **The files do not record their load time,** and rerunning the landing or a
   full batch replaces them instead of adding new ones.
 
@@ -121,6 +128,7 @@ flowchart LR
 | [0002](adr/0002-bronze-layout.md) | Bronze as snappy Parquet, one folder per table, `orders` by year; the three secret columns are never read | Accepted |
 | [0003](adr/0003-ingestion-modes.md) | Database tables in full batch, with an incremental cursor as a second mode; the clickstream as a stream, at least once | Accepted |
 | [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Proposed |
+| [0005](adr/0005-materialisations.md) | Silver as views, gold as tables rebuilt in full | Accepted |
 
 ## Change log
 
@@ -130,3 +138,4 @@ flowchart LR
 | L02 | Bronze exists: the group bucket, its layout and lifecycle, `g04_bronze_1` and who can read it, ADR-0002 |
 | L03 | Three paths into bronze: the export, the extractor and the clickstream, with a dead letter queue. ADR-0003 |
 | L04 | The warehouse: seven native tables, the daily demand views, the query cap. ADR-0004 |
+| L05 | Silver and gold with dbt: the twin rule, the star, tests on every grain. ADR-0005 |

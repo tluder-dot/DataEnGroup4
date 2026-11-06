@@ -68,6 +68,7 @@ write into anyone else's.
 | Dead letter queue | `gs://data-engineering-i1-g04/bronze/_dlq/<source>/` | Jane (L03) |
 | BigQuery: bronze as external tables | dataset `g04_bronze_1`, tables `<table>_external` | Till (L02) |
 | BigQuery: native tables | dataset `g04_warehouse` | Enzo (L04) |
+| BigQuery: silver and gold, built by dbt | datasets `g04_silver`, `g04_gold` | Till (L05) |
 
 - **Region:** `europe-west1` for every bucket and dataset. Location is fixed
   when a bucket or dataset is created, and moving one means recreating it.
@@ -85,7 +86,7 @@ write into anyone else's.
    ```
 
    Name branches `<area>/<what>`. The area is one of `docs`, `bronze`,
-   `ingestion`, `warehouse`, `infra` or `setup`.
+   `ingestion`, `warehouse`, `transform`, `infra` or `setup`.
 
 2. **Commit in small steps.** The history is graded. The subject says what
    the commit does, as an instruction: *"Partition bronze orders by order
