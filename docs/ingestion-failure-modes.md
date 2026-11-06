@@ -49,14 +49,14 @@ At least once: each file is written before its Kafka offset is committed.
 | Consumer stopped longer than retention | **Not handled** | | Kafka deletes messages after 168 hours, or earlier once the topic passes 256 MiB. Unread messages older than that are lost for good, and no one is warned. Nothing starts the consumer on a schedule yet (L07) |
 | Malformed event | Yes | JSON parsing, then the schema, before an event is accepted | The message goes to `bronze/_dlq/clickstream/` with the raw message, the reason, the time, the topic, the partition and the offset. The flow continues. Tested: 4 broken messages, all 4 in the DLQ, the consumer kept writing |
 | Impossible date | Yes | A date parse after the schema | `2026-13-45T00:00:00Z` has the right shape but no such day. It goes to the DLQ (`month must be in 1..12`) instead of crashing the whole batch |
-| Schema change: new field | Partly | The schema accepts unknown fields | Events keep landing, with the new column. Nobody is alerted, and only files written after the change have it |
+| Schema change: new field | Partly | The schema accepts unknown fields | Events keep landing. The new field is kept as JSON text in `extra_fields`, so every file keeps the same columns. Nobody is alerted |
 | Schema change: missing or renamed field, wrong type | Yes | The schema | Every such event goes to the DLQ with its reason. Bronze misses them until the schema is updated and the DLQ replayed |
 | Schema change: new `schema_version` | Yes | The consumer picks the schema by `schema_version` | An unknown version goes to the DLQ (`unknown schema_version: 2`, tested). Accepting it takes a new schema file and one line in `SCHEMAS` |
 | Replaying the DLQ | **Not handled** | | Each row keeps the topic, partition and offset to find the message again, but no tool replays it |
 | Duplicate after restart | Yes, by design | At least once | A crash between writing a file and committing its offset writes that batch again. Measured: 200 duplicates after one crash, exactly one batch (`BATCH=200`). Silver must deduplicate on `event_id` |
 | Expiring credential | **Not handled** | | If the application default credentials can no longer refresh, the write in `flush()` raises and the process stops before committing. After the person logs back in, the batch is read again: no loss, possible duplicates. Read from the code, not tested. The `gcloud` login did lapse on 5 November and asked for a password |
 | Write refused on the bucket | **Not handled** | | Same as an expired credential: the process stops before committing |
-| Small files | **Not handled** | | Once caught up, the consumer writes whenever the topic is quiet for a second. Seen on 5 November: files of 1 to 11 rows. Many small files slow every later read |
+| Small files | Partly | A file at most every 15 minutes (`FLUSH_EVERY_S`), or when a batch of 200 is full | On 5 November the consumer wrote whenever the topic was quiet for a second: files of 1 to 11 rows. The size of the new files is still to measure |
 | Nobody watching | **Not handled** | | No alert when the DLQ fills, the consumer stops or a login lapses |
 
 ## Database tables: PostgreSQL → bronze
