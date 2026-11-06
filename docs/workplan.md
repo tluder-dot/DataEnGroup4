@@ -23,8 +23,8 @@ own extractor, with full batch as its main mode.
 - **Each member does their steps end to end.**
 - **The next person in line reads the PR and merges it,** because their part
   builds on it. Nobody merges their own PR.
-- **`docs/architecture.md`:** the owner of each step adds their part in their
-  own PR, so the diagram stays current.
+- **`docs/architecture.md`:** Till updates the diagram for every step. Tell him
+  what changed when your PR is up.
 - **Step 11 is for all four:** each member claims two ADRs and speaks in the
   video. Evaluna coordinates.
 

@@ -19,7 +19,7 @@ School). Four students build it one layer per lesson:
 
 | Member | GitHub | Owns |
 |---|---|---|
-| Till Lüder | `tluder-dot` | step 5: dbt silver, gold and tests |
+| Till Lüder | `tluder-dot` | step 5: dbt silver, gold and tests; `docs/architecture.md` |
 | Jane Galthie | `jgalthie-sketch` | steps 6 and 7: images, Airflow |
 | Enzo Meret | `emeret-as` | steps 8 and 9: Terraform, FinOps |
 | Evaluna Barth | `evalunab` | steps 10 and 11: governance, ready to defend |
@@ -139,8 +139,8 @@ to this one: `docker compose up -d`.
     consequences, with the group's own measurements.
   - Once accepted, an ADR is never rewritten. A new ADR supersedes it. A
     proposed ADR may still be completed.
-- **`docs/architecture.md`:** the owner of each step adds their part in their
-  own PR.
+- **`docs/architecture.md` has one owner, Till,** so the diagram never gets two
+  conflicting edits.
 - **"Not handled" and "not done, because…" are good answers.** The course marks
   honest gaps up and invented results down.
 - **Exercise write-ups:** Exercise 1 pages go in `docs/exercises/`. Exercise 2

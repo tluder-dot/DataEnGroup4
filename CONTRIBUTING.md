@@ -121,7 +121,7 @@ it happens, tell the group and rotate the secret: the repo is **public**.
 - **ADRs:** copy `docs/adr/0000-template.md`. Use the number the work plan
   reserves for you. One decision per ADR. Once accepted, an ADR is never
   rewritten: a new ADR supersedes it. A proposed ADR may still be completed.
-- **`docs/architecture.md`:** the owner of each step adds their part in their
-  own PR, so the diagram stays current.
+- **`docs/architecture.md` has one owner, Till,** so its diagram never gets two
+  conflicting edits. Tell him what changed in your area.
 - **"Not handled" and "not done, because…" are good answers.** A guess written
   as a fact is not.
