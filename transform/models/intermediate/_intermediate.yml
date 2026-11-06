@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: int_orders
+    description: "Orders without their twins. GRAIN: one real order."
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+
+  - name: int_order_items
+    description: "Order lines of real orders, with their date. GRAIN: one product in one order."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [order_id, p_id]
+
+  - name: int_buyer_country
+    description: "GRAIN: one buyer, with the country of their default address."
+    columns:
+      - name: buyer_id
+        tests: [unique, not_null]
+
+  - name: int_product_ratings
+    description: "GRAIN: one reviewed product."
+    columns:
+      - name: p_id
+        tests: [unique, not_null]
+
+unit_tests:
+  - name: twin_is_removed_only_within_the_window
+    description: >
+      A data test can only catch what the data contains. This one checks the
+      rule itself: the same order 2 days later is a twin, 5 days later it is a
+      new order, and another buyer's or another card's identical order stays.
+    model: int_orders
+    given:
+      - input: ref('stg_orders')
+        rows:
+          - {order_id: 1, buyer_id: a, payment_id: 10, order_date: 2026-01-01}
+          - {order_id: 2, buyer_id: a, payment_id: 10, order_date: 2026-01-03}
+          - {order_id: 3, buyer_id: a, payment_id: 10, order_date: 2026-01-08}
+          - {order_id: 4, buyer_id: b, payment_id: 20, order_date: 2026-01-02}
+          - {order_id: 5, buyer_id: a, payment_id: 11, order_date: 2026-01-02}
+      - input: ref('stg_order_items')
+        rows:
+          - {order_id: 1, p_id: X, qty: 1, price_at_purchase: 9.99}
+          - {order_id: 2, p_id: X, qty: 1, price_at_purchase: 9.99}
+          - {order_id: 3, p_id: X, qty: 1, price_at_purchase: 9.99}
+          - {order_id: 4, p_id: X, qty: 1, price_at_purchase: 9.99}
+          - {order_id: 5, p_id: X, qty: 1, price_at_purchase: 9.99}
+    expect:
+      rows:
+        - {order_id: 1}
+        - {order_id: 3}
+        - {order_id: 4}
+        - {order_id: 5}
