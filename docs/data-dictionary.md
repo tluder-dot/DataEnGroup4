@@ -62,23 +62,24 @@ still belong to a buyer, through `orders`.
 ## Traps in the export
 
 What a loader or a staging model has to know. Each trap belongs to exactly one
-place in silver (L05).
+place in silver, or is left alone with a reason
+([transform/](../transform/README.md)).
 
-| # | Trap | Where | What goes wrong |
-|---|---|---|---|
-| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) |
-| 2 | **Leading zeros in text codes** | `customer.phone` (82,203 start with `0`), `shipping_details.phone` (125,861), `shipping_details.zip` (19,622), `p_id` (6 products, 30 order lines) | Read as numbers, they lose the zero: a 10-digit phone becomes 9 digits, and a `p_id` no longer joins |
-| 3 | **Codes that already lost their zeros** | `payment_details.cvv`: 961 with one digit, 8,440 with two | Never ingested, but a reminder of what trap 2 does |
-| 4 | **Strings that pandas reads as missing** | `customer.fname` (4), `review.r_desc` (13), `review.title` (21) | `None`, `NA`, `N/A`, `NULL` and `n/a` become nulls with pandas' defaults. Other spellings (`Na`, `none`) stay text |
-| 5 | **Empty and blank text** | `product.p_name` (6 empty), `review.r_desc` (14 empty, 110 a single space) | Not null, but not a value either |
-| 6 | **Every order twice** | `orders`, and so `order_items`, `payment`, `shipment` | Revenue and units doubled; `DISTINCT` on the order's columns removes only a fifth of the twins (L01) |
-| 7 | **Float noise in prices** | `product.price` (35,205 with more than two decimals); 5 products under half a cent | Catalogue totals differ from what was paid (`price_at_purchase`, rounded to cents) |
-| 8 | **Columns that are always empty** | `seller.seller_name`, `orders.discount_id` | A column of nulls that looks like data |
-| 9 | **Columns with one value** | `payment.method`, `payment.status`, `review.seller_product_flag`, `shipment.shipment_type`, `customer_payment.is_default` | Nothing to filter or group on, and `seller_product_flag` contradicts the links |
-| 10 | **Empty tables** | `cart`, `cart_items`, `daily_deals`, `discount`, `returns` | A model built on them returns nothing, not an error |
-| 11 | **Inconsistent names** | `wishlist_item.product_id` for `p_id`; `shipping_details.state` holds European regions | Joins and meanings guessed from names go wrong |
-| 12 | **A timestamp with no time zone** | `payment.created_at` | The day of a payment near midnight depends on the time zone assumed |
-| 13 | **No constraints in the files** | All 27 | Keys and foreign keys hold in the source, but nothing in the CSVs enforces them |
+| # | Trap | Where | What goes wrong | Handled in |
+|---|---|---|---|---|
+| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) | Left out by every staging model |
+| 2 | **Leading zeros in text codes** | `customer.phone` (82,203 start with `0`), `shipping_details.phone` (125,861), `shipping_details.zip` (19,622), `p_id` (6 products, 30 order lines) | Read as numbers, they lose the zero: a 10-digit phone becomes 9 digits, and a `p_id` no longer joins | Bronze keeps the text, and staging never casts these columns |
+| 3 | **Codes that already lost their zeros** | `payment_details.cvv`: 961 with one digit, 8,440 with two | Never ingested, but a reminder of what trap 2 does | Left alone: `cvv` is never ingested |
+| 4 | **Strings that pandas reads as missing** | `customer.fname` (4), `review.r_desc` (13), `review.title` (21) | `None`, `NA`, `N/A`, `NULL` and `n/a` become nulls with pandas' defaults. Other spellings (`Na`, `none`) stay text | Left alone in `stg_review`: a reviewer can type them, and nothing tells them from a missing value |
+| 5 | **Empty and blank text** | `product.p_name` (6 empty), `review.r_desc` (14 empty, 110 a single space) | Not null, but not a value either | `stg_product`, `stg_review` |
+| 6 | **Every order twice** | `orders`, and so `order_items`, `payment`, `shipment` | Revenue and units doubled; `DISTINCT` on the order's columns removes only a fifth of the twins (L01) | `int_orders`: it needs the order lines, so it cannot be a staging model |
+| 7 | **Float noise in prices** | `product.price` (35,205 with more than two decimals); 5 products under half a cent | Catalogue totals differ from what was paid (`price_at_purchase`, rounded to cents) | `stg_product`, `stg_order_items` |
+| 8 | **Columns that are always empty** | `seller.seller_name`, `orders.discount_id` | A column of nulls that looks like data | `stg_orders` leaves out `discount_id`. `seller` is not read |
+| 9 | **Columns with one value** | `payment.method`, `payment.status`, `review.seller_product_flag`, `shipment.shipment_type`, `customer_payment.is_default` | Nothing to filter or group on, and `seller_product_flag` contradicts the links | `stg_review` leaves out the flag. The other tables are not read |
+| 10 | **Empty tables** | `cart`, `cart_items`, `daily_deals`, `discount`, `returns` | A model built on them returns nothing, not an error | Left alone: no model reads them |
+| 11 | **Inconsistent names** | `wishlist_item.product_id` for `p_id`; `shipping_details.state` holds European regions | Joins and meanings guessed from names go wrong | `stg_customer_shipping`, `stg_shipping_details`. `wishlist_item` is not read |
+| 12 | **A timestamp with no time zone** | `payment.created_at` | The day of a payment near midnight depends on the time zone assumed | Left alone: gold dates come from `order_date`, and `payment` is not read |
+| 13 | **No constraints in the files** | All 27 | Keys and foreign keys hold in the source, but nothing in the CSVs enforces them | The tests in `_staging.yml`, `_intermediate.yml` and `_marts.yml` |
 
 ## In bronze
 

@@ -50,6 +50,19 @@ bq show --format=prettyjson data-engineering-i1:g04_bronze_1 > access.json
 bq update --source access.json data-engineering-i1:g04_bronze_1
 ```
 
+## Datasets `g04_silver` and `g04_gold`
+
+Created on 6 November 2026, with the same default groups removed. Silver holds
+buyer IDs and review text.
+
+| Principal | Role | Scope | Why |
+|---|---|---|---|
+| `projectOwners` | Owner | Dataset | Default, kept: the project's owners |
+| Till | Owner | Dataset | Created the datasets and runs dbt |
+| Enzo | Owner | Dataset | Manages the datasets with Terraform (L08) |
+| Jane | `roles/bigquery.dataEditor` | Dataset | Airflow rebuilds silver and gold (L07) |
+| Evaluna | `roles/bigquery.dataEditor` | Dataset | Classifies and protects the columns (L10) |
+
 ## Not handled
 
 - **Anyone with Viewer on the project can read the bronze files** through the

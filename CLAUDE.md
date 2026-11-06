@@ -49,7 +49,7 @@ through an edit.
 ## Git and pull requests
 
 - **Branch from an up-to-date `main`,** named `<area>/<what>`. The area is one
-  of `docs`, `bronze`, `ingestion`, `warehouse`, `infra` or `setup`.
+  of `docs`, `bronze`, `ingestion`, `warehouse`, `transform`, `infra` or `setup`.
 - **One branch and one PR per deliverable.** Fill in the PR template and add
   the reviewer named in the workplan.
 - **Commit subjects say what the commit does, as an instruction.** The body
@@ -92,7 +92,7 @@ through an edit.
 - **Group 4's resources start with `g04`:**
   - bucket `gs://data-engineering-i1-g04`
   - datasets `g04_bronze_1` (external tables named `<table>_external`) and
-    `g04_warehouse`
+    `g04_warehouse`, `g04_silver`, `g04_gold`
 - **Never create, change or delete anything outside these names,** and never
   touch another student's or group's resources. Before deleting or overwriting
   anything in the cloud, show the person exactly what, and wait for a yes.
