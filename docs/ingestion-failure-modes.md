@@ -1,13 +1,12 @@
 # Ingestion failure modes
 
 What can go wrong on each path into bronze, whether we handle it, and what
-happens if it occurs. State on 5 November 2026. Every figure says where it
+happens if it occurs. State on 6 November 2026. Every figure says where it
 comes from; the commands are under [Evidence](#evidence).
 
-Three paths are planned (ADR 0003). On 5 November, two exist: the export and
-the clickstream consumer. The extractor for the database tables (T2) is not on
-`main` yet, so its rows say **pending T2** and describe the plan in
-[docs/workplan.md](workplan.md), not a measurement.
+Three paths write into bronze ([ADR 0003](adr/0003-ingestion-modes.md)): the
+export, the clickstream consumer and the extractor. A person starts each of
+them by hand: nothing runs on a schedule before L07.
 
 ## Where the credentials live
 
@@ -65,24 +64,27 @@ At least once: each file is written before its Kafka offset is committed.
 Two paths. **The export**,
 [`ingestion/land_export.py`](../ingestion/land_export.py), landed the 27
 tables of the v1.0.0 CSV export once; it never reads the database. **The
-extractor**, `ingestion/extract_orders.py` (T2, Till), will read seven tables
-from the live database, full batch by default and incremental on `order_date`
-as a second mode. It is not on `main` on 5 November.
+extractor**, [`ingestion/extract_orders.py`](../ingestion/extract_orders.py),
+reads seven tables from the live database, full batch by default and
+incremental on `order_date` as a second mode.
 
 | Failure | Handled? | By what | What happens if it occurs |
 |---|---|---|---|
-| New rows | Pending T2 | Full batch rereads the table; incremental reads the rows past the cursor | Today, new rows in the database do not reach bronze at all: the export is a snapshot |
-| Updates | Pending T2 | Full batch only | Full batch sees them at the next run. A cursor on `order_date` does not, because an update keeps the row's date. CDC test: a replication slot saw an `UPDATE` that a date cursor would miss |
-| Deletes | Pending T2 | Full batch only | Full batch sees a deleted row as missing from the new snapshot. An incremental cursor never sees it. The CDC test saw the `DELETE`, carrying only the key, not the old values |
-| Source down | Pending T2 | Planned: retries with a growing delay, then a clean failure | Nothing lands until the database is back |
-| Malformed row | Pending T2 | The database's own types and keys | A row cannot be malformed the way a message can. The export's deliberate defects (index column, leading zeros, NA-like strings) land as they are and are fixed once in silver |
-| Schema change | Pending T2 | Columns selected by name | A new column is ignored until it is added to the query. A dropped or renamed column makes the query fail |
-| Duplicate after restart | Pending T2 | | Full batch rereads the whole table, so a rerun gives the same snapshot. For incremental, `>` or `>=` on the cursor decides between missing rows and duplicating them; T2 records which |
+| New rows | Yes | Full batch rereads the table; incremental reads from the cursor's day on, with `>=` | They land at the next run. Tested: `>=` kept a new order on the cursor's own day, which `>` lost for good |
+| Updates | Full batch only | The full reread | Tested: an update that kept the order's date reached the full batch and not the incremental run. The CDC test saw the same `UPDATE` |
+| Deletes | Full batch only | The full reread | Tested: after a delete, the order was gone from the full batch and still in the incremental files. The CDC test saw the `DELETE`, carrying only the key, not the old values |
+| Source down | Yes | Retries with a growing delay, then a clean failure | Tested with the database stopped: retries after 1, 2 and 4 s, then exit code 1 and no file written. When the database came back during the retries, the run finished |
+| Malformed row | Yes | The database's own types and keys | A row cannot be malformed the way a message can. The export's deliberate defects (index column, leading zeros, NA-like strings) land as they are and are fixed once in silver |
+| Schema change | Partly | Columns selected by name, each with a fixed type | A new column is ignored until it is added to `TABLES`. A dropped or renamed column makes the query fail and the run stops, with bronze unchanged. Read from the code, not tested |
+| Duplicate after restart | Yes, by design | Full batch replaces its files; incremental writes the file before saving the cursor | A full rerun gives the same snapshot. Each incremental run rereads the cursor's day: 109 to 111 rows, 329 duplicates over 4 runs. Silver must deduplicate on `order_id` |
+| Interrupted full run | Partly | Each file is replaced whole | `orders` has one file per year, so a stopped run can leave old and new years side by side until it is run again. Read from the code, not tested |
 | Expiring credential | **Not handled** | | `DATABASE_URL` does not expire, but the Google login that writes to the bucket does, and the run stops |
+| Nobody starts it | **Not handled** | | Bronze stays at the last run until someone runs the extractor. No schedule before L07 |
 
 ## Evidence
 
-All on 5 November 2026, by Jane, on the local `albert-marketplace` stack.
+On the local `albert-marketplace` stack: the consumer's and CDC tests by Jane on
+5 November 2026, the extractor's by Till on 6 November.
 
 | What | How | Result |
 |---|---|---|
@@ -90,3 +92,7 @@ All on 5 November 2026, by Jane, on the local `albert-marketplace` stack.
 | Dead letter queue | 4 broken messages sent with `kafka-console-producer.sh` while `clickstream-g04` ran | 4 rows in `bronze/_dlq/clickstream/dt=2026-11-05/`, offsets 1556 to 1559; the consumer kept writing (15:06 UTC) |
 | What a date cursor misses | Slot `pg_create_logical_replication_slot('cdc_jg', 'test_decoding')`; insert, update and delete of test product `EX1JG`; `pg_logical_slot_peek_changes` | 3 changes seen. The slot held 482 kB of log, inactive, then was dropped; 0 slots left (15:43 UTC) |
 | Kafka retention | `KAFKA_LOG_RETENTION_HOURS` and `KAFKA_LOG_RETENTION_BYTES` in `albert-marketplace/compose.yaml` | 168 hours, 268,435,456 bytes (256 MiB) |
+| Cursor, `>` against `>=` | First run, then a run with nothing new, then test orders on the cursor's day and the next day, one output folder per comparator | `>`: 0, 0, 1, 0 rows after the first run, 223,260 of 223,261 orders. `>=`: 109, 110, 111, 1 rows, all 223,261 orders, 329 duplicates |
+| Updates and deletes | A test order and an update of an old order, both modes, then the delete, both modes | Full batch saw the update and the delete. Incremental saw neither |
+| Source down | `docker compose stop db`, `RETRIES=4`, `RETRY_DELAY=1`; then again with the database started during the retries | Exit code 1 after 7.3 s, no file written; then 42,858 rows written |
+| Full run | The seven tables, three times, to the bucket; once to a local folder | 244, 361 and 429 s; 5.5 s. Row counts equal the database's: 1,298,413 |

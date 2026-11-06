@@ -1,6 +1,6 @@
 # ADR-0003: Read the database tables in full batch, and the clickstream as a stream, at least once
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-05
 - **Author:** Jane Galthie
 - **Lesson:** L03
@@ -22,8 +22,9 @@ read, the delivery guarantee, and what would make us change.
 | Duplicates after a crash | 200 after one crash between writing a file and committing its offset: one batch (`BATCH=200`). No event lost: 5,538 distinct events, all present | Crash test, 5 November |
 | Malformed events | 4 sent, 4 in the dead letter queue, the consumer kept running | DLQ test, 5 November |
 | Kafka retention | 168 hours, or 256 MiB in the topic | `albert-marketplace/compose.yaml` |
-| `>` against `>=` on the cursor | **Pending T2** | Till's extractor |
-| Duration of a full run | **Pending T2** | Till's extractor |
+| `>` against `>=` on the cursor | `>` lost for good a new order on the cursor's own day (223,260 of 223,261 orders). `>=` lost none, and rereads the whole last day at each run: 109 to 111 rows, 329 duplicates over 4 runs | Extractor test, 6 November |
+| Duration of a full run | 1,298,413 rows in seven tables: 4 to 7 minutes into the bucket (244, 361 and 429 s), 5.5 s to a local disk. The time is the upload from a home connection, not the database | Extractor runs, 6 November |
+| Extractor library | `psycopg` 3.3.6, plain SQL, no ORM or framework | `ingestion/requirements.txt` |
 
 The tests and their commands are in
 [docs/ingestion-failure-modes.md](../ingestion-failure-modes.md#evidence).
@@ -66,8 +67,8 @@ The tests and their commands are in
 ## Decision
 
 **Database tables: full batch by default.** The incremental cursor on
-`order_date` stays as a second mode, because the brief asks for it, not as the
-default. **Clickstream: streaming, at least once.** The offset is committed only
+`order_date` stays as a second mode, with `>=`, because the brief asks for it,
+not as the default. **Clickstream: streaming, at least once.** The offset is committed only
 after the file is in the bucket, and silver deduplicates on `event_id`.
 
 ## Consequences
@@ -79,8 +80,8 @@ after the file is in the bucket, and silver deduplicates on `event_id`.
   duplicates, so anything that reads it before silver must deduplicate on
   `event_id`.
 - **What would change this decision:**
-  - **A full run taking longer than the interval between runs** (duration
-    pending T2): move the big tables to the incremental mode, or to CDC.
+  - **A full run taking longer than the interval between runs** (4 to 7
+    minutes today): move the big tables to the incremental mode, or to CDC.
   - **A service account, or the Airflow workaround the work plan announces:** reopens CDC
     through Airbyte, which sees updates and deletes without rereading.
   - **The consumer not running for 168 hours:** events are lost. If it cannot
