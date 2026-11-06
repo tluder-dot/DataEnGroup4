@@ -1,7 +1,7 @@
 # How we work on this repo
 
 Read this once before your first change. [docs/workplan.md](docs/workplan.md)
-says who does what until session 5.
+says who does what in steps 5 to 11.
 
 ## 1. Set up your machine (once, about 30 minutes)
 
@@ -94,20 +94,15 @@ write into anyone else's.
    "fix" or "wip".
 
 3. **Push and open a pull request early,** as a draft while unfinished. Fill
-   in the template and add the reviewer named in the work plan.
+   in the template and add the person the work plan names.
 
-4. **The reviewer checks the content, not just the format.** Rerun a query,
-   open a file, compare a figure with its source. Then submit a GitHub review:
-   **Approve**, or **Request changes** with comments. A merge without a
-   submitted review does not count as reviewed.
+4. **The next person in line reads the PR.** If something is wrong, they say so
+   in a comment. If it is fine, merging it says so.
 
-5. **The author merges after approval,** with **Create a merge commit**. Never
-   squash: squashing replaces our individual commits with one. Then delete the
-   branch. The one exception, for now: Jane approves and merges Till's PRs
-   ([work plan](docs/workplan.md)).
+5. **They merge with Create a merge commit.** Never squash: squashing replaces
+   our individual commits with one. GitHub deletes the branch after the merge.
 
-6. **Never push to `main`,** and never merge your own pull request without an
-   approval.
+6. **Never push to `main`,** and never merge your own pull request.
 
 ## 4. What never goes into git
 
@@ -128,6 +123,6 @@ it happens, tell the group and rotate the secret: the repo is **public**.
   reserves for you. One decision per ADR. Once accepted, an ADR is never
   rewritten: a new ADR supersedes it. A proposed ADR may still be completed.
 - **`docs/architecture.md` has one owner, Till,** so its diagram never gets two
-  conflicting edits. Tell him what changed in your area, or comment on his PR.
+  conflicting edits. Tell him what changed in your area.
 - **"Not handled" and "not done, because…" are good answers.** A guess written
   as a fact is not.

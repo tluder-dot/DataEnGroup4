@@ -97,7 +97,7 @@ flowchart LR
 | **The export** | `bronze/<table>/`: one file per table, `orders` by year of `order_date` ([ADR-0002](adr/0002-bronze-layout.md)) | |
 | **The extractor** | `bronze/postgres/<table>/`: seven tables, replaced at each run. `bronze/postgres/_incremental/orders/` and a saved cursor ([ADR-0003](adr/0003-ingestion-modes.md)) | |
 | **The clickstream** | `bronze/clickstream/dt=YYYY-MM-DD/`, by `event_time`, at least once. Rejected events in `bronze/_dlq/clickstream/` | |
-| **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till (owner), Evaluna, Jane, Enzo (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
+| **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till and Enzo (owners), Evaluna and Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
 | **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), and the project's owners, editors and viewers |
 
 | **Datasets** `g04_silver`, `g04_gold` | Built by dbt from `g04_bronze_1` ([transform/](../transform/README.md)): views for silver, tables for gold ([ADR-0005](adr/0005-materialisations.md)). Twins removed, every grain tested ([acceptance criteria](acceptance-criteria.md), [lineage](lineage.md)) | Till and Enzo (owners), Jane and Evaluna (BigQuery Data Editor), the project's owners ([access](../infra/iam.md)) |
