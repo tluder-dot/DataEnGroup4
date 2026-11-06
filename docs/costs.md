@@ -158,8 +158,8 @@ carry the four keys.
 **Not created. Not done, because the budget API is not available to us.** On
 6 Nov 2026 `cloudbilling.googleapis.com` and `billingbudgets.googleapis.com`
 both answered 403 "has not been used in project data-engineering-i1 before or
-it is disabled". We cannot enable an API on the course project, and we do not
-know the billing account's id, so even a `google_billing_budget` in Terraform
+it is disabled". We did not try to enable them on the course project (it is the
+cohort's, not ours), and we do not know the billing account's id, so even a `google_billing_budget` in Terraform
 could not be written.
 
 What we would set, and who:
@@ -200,7 +200,7 @@ off, read 6 Nov 2026 (Enzo's own jobs only). Shape: a spike, all on one day.
 At $7.50 per TiB that is 1,173,684,313 bytes ÷ 2^40 × $7.50 = **$0.0080 of
 processed bytes, $0.0147 on the billed bytes** (billed is larger because each
 table read bills at least 10 MiB). **Both are inside the 1 TiB free tier, so
-the invoice is $0.** The 15 table builds are 99 % of the slot time (0.965 of
+the invoice is $0.** The 15 table builds are 98 % of the slot time (0.965 of
 0.988 slot-hours), because a `CREATE TABLE AS SELECT` that reads little still
 runs on many slots.
 
@@ -228,15 +228,15 @@ Sources: sizes from `__TABLES__` of each dataset, 6 Nov 2026; price from the
 course's lecture 4, read 24 Sep 2026. A rebuild is
 `warehouse/02_tuned_tables.sql`.
 
-**Not done, because** the group decided not to delete cloud resources for this
-saving (Enzo, 6 Nov 2026), and because of the failure conditions below. The
+**Not done, because** Enzo decided on 6 Nov 2026 not to delete cloud resources for this
+saving, and because of the failure conditions below. The
 figures are what the saving *would* be.
 
 **When it saves nothing, or goes wrong:**
 
 - **The bill does not move.** BigQuery's first 10 GiB of storage per month is
   free ([pricing](https://cloud.google.com/bigquery/pricing), read 6 Nov 2026).
-  We hold 0.31 GiB in total, so the billed saving is $0. The $0.0023 is the
+  We hold 0.29 GiB in BigQuery (warehouse and gold), so the billed saving is $0. The $0.0023 is the
   list price of data we are not charged for.
 - **A document points at one.** `docs/runbooks/slow-query.md` names
   `order_items_day` and `orders_month`. Dropping the table breaks its commands.
