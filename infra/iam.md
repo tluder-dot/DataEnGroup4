@@ -64,6 +64,25 @@ buyer IDs and review text.
 | Jane | `roles/bigquery.dataEditor` | Dataset | Airflow rebuilds silver and gold (L07) |
 | Evaluna | `roles/bigquery.dataEditor` | Dataset | Classifies and protects the columns (L10) |
 
+## Dataset `g04_warehouse`
+
+Native tables and materialised views of step 4. Read back with the BigQuery API
+(`get_dataset`, access entries) on 6 November 2026.
+
+| Principal | Role | Scope | Why |
+|---|---|---|---|
+| `projectOwners` | Owner | Dataset | Default, kept: the project's owners |
+| Enzo | Owner | Dataset | Created the dataset and manages it with Terraform (L08) |
+| Jane | `roles/bigquery.dataViewer` | Dataset | Reads the warehouse for the pipeline (L07) |
+
+`projectReaders` and `projectWriters` were removed on 6 November: until then
+any Viewer or Editor of the project could read the warehouse. It holds the
+orders, order lines, reviews and the customer-to-address link;
+`shipping_details` keeps only `address_id` and `country`, so it has no street or
+phone ([tuning](../docs/warehouse-tuning.md)). Evaluna and Till have no grant
+here. No file under `transform/` reads `g04_warehouse` (searched on
+6 November), so dbt does not need one.
+
 ## Not handled
 
 - **Anyone with Viewer on the project can read the bronze files** through the
