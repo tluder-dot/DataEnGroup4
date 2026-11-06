@@ -1,64 +1,68 @@
-# Work plan until session 5
+# Work plan: steps 5 to 11
 
-**Goal:** project steps 1 to 4 done, reviewed and merged before session 5.
-The deliverables and "done when" lines below come from the course brief.
+All sessions have taken place. What is left is project steps 5 to 11 and the
+defence. The deliverables and "done when" lines are in the course brief, under
+each lesson's "Project step". This page says who does what.
 
 How to work (setup, names, review rules): [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 **No service accounts, so full batch.** Charles told us (29 October) that
 groups get no service accounts in this project. Without one, Airbyte cannot
 reach our bucket or BigQuery, so the database tables reach bronze through our
-own extractor, with full batch as its main mode. The next session shows a
-workaround with Airflow.
+own extractor, with full batch as its main mode.
 
 ## Who owns what
 
-| Member | Owns | ADR | PRs reviewed by |
-|---|---|---|---|
-| **Till** | Steps 1 and 2, the extractor, data dictionary, `docs/architecture.md` | 0001, 0002 | Jane |
-| **Jane** | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes | 0003 | Till |
-| **Enzo** | Step 4: native tables, tuning, materialised view, cost cap, runbook | 0004 | Jane |
-| **Evaluna** | Tasks from session 5 on | | |
+| Part | Member | Steps | ADRs | PRs reviewed by |
+|---|---|---|---|---|
+| 1 | **Till** | 5: dbt silver, gold and tests | 0005 materialisations | Jane |
+| 2 | **Jane** | 6: images. 7: Airflow | 0006 image tags, 0007 idempotency | Enzo |
+| 3 | **Enzo** | 8: Terraform. 9: FinOps | 0008 remote state, 0009 cost attribution | Evaluna |
+| 4 | **Evaluna** | 10: governance. 11: ready to defend | 0010 data classification | Till |
 
-- **Step 2 moved from Evaluna to Till on 3 November.** Evaluna wrote the
-  landing script (#10); her next tasks come with the later steps.
-- **For now, Jane approves and merges Till's PRs.** For every other PR, the
-  reviewer approves and the author merges.
-- **A review says what was checked,** and comes before the merge.
-- At the defence, everyone is asked about an ADR they did not write.
+- **The next person in line reviews,** because their part builds on it.
+- **A review comes before the merge and says what was checked.** GitHub refuses
+  a merge without an approval. The author then merges.
+- **Every member needs a commit in every step:** the brief asks for it from step
+  7 on. The owner gives each other member one small task. Till's is the diagram,
+  because `docs/architecture.md` has one owner.
+- **Step 11 is for all four:** each member claims two ADRs and speaks in the
+  video. Evaluna coordinates.
 
-## Where each step stands
+## Who can start when
 
-**Step 1:** done (#2 to #5, #7, #8).
-
-**Step 2:** merged (#12 to #18), but none of these PRs has a submitted review.
-
-**Step 3:**
-
-| Deliverable | What | PR |
+| When | Who | What |
 |---|---|---|
-| 1 | Connector: dropped. Without a service account, Airbyte cannot reach our bucket or BigQuery (ADR 0003). The extractor carries the seven tables instead | |
-| 2 | `ingestion/extract_orders.py` | #32 |
-| 3 to 5 | `ingestion/consume_clickstream.py`, `clickstream.schema.json`, `bronze/_dlq/` | #21 |
-| 6 | `docs/ingestion-failure-modes.md` | #23, #32 |
-| 7 | ADR 0003 | #24, #32 |
-| 8 | The clickstream in the data dictionary | #22, #32 |
-| 9 | `docs/architecture.md` | #33 |
+| **Now** | Till | Step 5, starting with the `transform/` skeleton |
+| **Now** | Jane | Step 6: `.dockerignore` and the ingestion image |
+| **Now** | Enzo | Step 8, then step 9 |
+| **Now** | Evaluna | Step 10: classification, access matrix, ADR 0010 |
+| **After step 5** | Jane | The dbt image, then the DAG (step 7) |
+| **After step 5** | Evaluna | The erasure runbook: it has to run through silver and gold |
+| **After step 9** | Evaluna | Enforcement in Terraform, on top of the labels |
+| **Last** | Everyone | Step 11: the video needs the DAG running |
 
-*Not met:* "three paths write without a human". A person starts each path until
-L07.
+## Limits to check, not assume
 
-**Step 4:** in #25 to #30, for Jane's review.
+- **Step 7:** Airflow takes 7 containers and about 5.7 GB, so it needs a machine
+  with memory to spare. Without a service account, jobs run with the runner's
+  own `gcloud` login, mounted read-only into local containers, as in the L05 and
+  L07 labs.
+- **Step 8:** a service account cannot be declared, and project-level bindings
+  are not allowed. Write the gap in `docs/infra.md`. Till first makes Enzo an
+  owner of `g04_bronze_1`, so that Terraform can manage it.
+- **Step 9:** our logins may not reach budgets or the billing export.
+  `JOBS_BY_PROJECT` is refused; use `JOBS_BY_USER`, and say so.
+- **Step 10:** creating policy tags may be refused. The brief asks for gaps to be
+  written down.
 
-## Still to do
+## Still open from steps 2 to 4
+
+Nothing waits for these, but the repository is graded on them.
 
 **Jane**
-- Review and merge this plan's PR first, then #32. #33 comes last, after #27
-  and #28: it links to them.
-- Review Enzo's #25 to #31.
-- Submit a review on #12 and #14, even after the merge: step 2 needs at least
-  one reviewed PR.
-- **J7 · Consumer fixes** (nothing waits for them):
+- Submit a real review on #14 and #28, saying what was checked.
+- **Consumer fixes:**
   - The same columns and types in every file, as declared in
     `ingestion/clickstream_external.sql`. Today a batch without an order has no
     `order_id`, and a batch of only cart events writes `qty` as an integer.
@@ -68,7 +72,6 @@ L07.
     holds the time of the rejection.
 
 **Enzo**
-- Merge #25 to #31 after Jane's approval: #25 and #26 first.
 - Confirm ADR 0004, then set it to accepted.
 - Take `projectReaders` and `projectWriters` off `g04_warehouse`, as on
   `g04_bronze_1`: anyone with Viewer on the project can read it today.
@@ -79,65 +82,9 @@ L07.
 - Write your role in the README team table.
 
 **Till**
-- Review Jane's J7 PR.
-
-## Enzo: step 4, the warehouse
-
-Bronze is in `g04_bronze_1`, readable by Enzo. Before any measurement, turn the
-query cache off. Record **bytes processed**, never bytes billed:
-billing has a 10 MiB minimum.
-
-**N1 · The working set as native tables:** dataset `g04_warehouse`
-(deliverable 1).
-- Load the seven tables. `order_items` joins `orders` to get `order_date`.
-- Say which tables you loaded and which stay external, and why.
-
-**N2 · Tuning:** `docs/warehouse-tuning.md` (deliverables 2, 4 and 7).
-- A table: table, change, query, bytes before, bytes after, ratio.
-- Partition by a defended grain: three years of orders suggest month.
-  Cluster where a query filters. Report the changes that bought nothing
-  (1.0×) too, each with a sentence.
-- Three analytical queries the project needs: SQL, bytes processed, cost at
-  $7.50 per TiB, tuned versus untuned.
-- `maximum_bytes_billed`: where it is set, the value and why, and the exact
-  error it gives.
-
-**N3 · Daily demand materialised view:** `warehouse/daily_demand.sql`
-(deliverable 3), plus the collapse ratio, order lines ÷ distinct (product,
-day), in N2's document. At about 1.14 the view saves no bytes under
-per-byte billing. Keep it and say what it costs, or show a coarser grain that
-moves the ratio.
-
-**N4 · ADR 0004:** `docs/adr/0004-warehouse-pricing.md` (deliverable 5).
-- On demand or capacity: the workload in numbers, and the crossover
-  arithmetic.
-- The decision and its cost.
-- What would change your mind, as a number someone can watch.
-
-**N5 · Runbook:** `docs/runbooks/slow-query.md` (deliverable 6).
-- "A 2-second query now takes 2 minutes", written for a teammate at 23:00.
-- Ordered steps, where to click, and when to escalate.
-- It covers: lost partition filter, table outgrew its grain, one stage
-  dominates, skew, data changed shape, cached comparison.
-
-**N6 · Costs:** add the warehouse section to `docs/costs.md`, after #16 is
-merged.
-
-## Everyone, alone, before session 5: the L05 setup
-
-About 20 minutes; the course's "Before the session: Docker and dbt" page.
-
-1. Start Docker Desktop.
-2. `docker pull charlestng/dbt-bigquery:1.12.1`
-3. `gcloud auth application-default login`
-4. In a folder outside this repo (`~/de/l05`), write `profiles.yml`
-   (project `data-engineering-i1`, dataset `l05_<your initials>`, location
-   `europe-west1`) and `dbt_project.yml`.
-5. Run `dbt debug` in the container until it prints **All checks passed!**
-
-The seven tables the setup checks for are `g04_bronze_1`'s external tables.
+- Submit a real review on #24, saying what was checked.
+- Delete the merged branches on GitHub. New ones delete themselves.
 
 ## Not in this plan
 
 - The Exercise 2 PDFs: each of us writes them after the project work.
-- Till's L02 Exercise 1 page (PR #6).

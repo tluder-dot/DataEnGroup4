@@ -10,19 +10,19 @@ School). Four students build it one layer per lesson:
 - cost controls and governance
 
 **Read first:**
-- [docs/workplan.md](docs/workplan.md): who does what until session 5.
+- [docs/workplan.md](docs/workplan.md): who does what in steps 5 to 11.
   The person you work with has their tasks under their own name.
 - [CONTRIBUTING.md](CONTRIBUTING.md): setup, shared resource names, branch and
   review rules.
 
 ## Who you are working with
 
-| Member | GitHub | Owns until session 5 |
+| Member | GitHub | Owns |
 |---|---|---|
-| Till Lüder | `tluder-dot` | steps 1 and 2 (bucket, bronze, lifecycle, access, costs), extractor (full batch and incremental), data dictionary, `docs/architecture.md` |
-| Evaluna Barth | `evalunab` | tasks from session 5 on |
-| Jane Galthie | `jgalthie-sketch` | step 3: clickstream consumer, schema, dead letter queue, failure modes |
-| Enzo Meret | `emeret-as` | step 4: native tables, tuning, materialised view, cost cap, runbook |
+| Till Lüder | `tluder-dot` | step 5: dbt silver, gold and tests; `docs/architecture.md` |
+| Jane Galthie | `jgalthie-sketch` | steps 6 and 7: images, Airflow |
+| Enzo Meret | `emeret-as` | steps 8 and 9: Terraform, FinOps |
+| Evaluna Barth | `evalunab` | steps 10 and 11: governance, ready to defend |
 
 If you cannot tell which member you are working with, check
 `git config user.name` or ask. Work on that person's tasks only. Another
@@ -57,8 +57,8 @@ through an edit.
 - **Never push to `main`.** Never force-push a branch someone else has pulled.
   Never merge a PR that has no approving review.
 - **The reviewer approves; the author merges,** with **Create a merge commit**.
-  Never squash: squashing erases individual commits. For now, Jane approves
-  and merges Till's PRs.
+  Never squash: squashing erases individual commits. GitHub refuses a merge
+  without an approval, so never look for a way around it.
 - **No Claude attribution, anywhere:**
   - No `Co-Authored-By: Claude` trailer in commit messages.
   - No "Generated with Claude Code" line in PR descriptions or comments.
@@ -123,8 +123,9 @@ to this one: `docker compose up -d`.
 - **No Airbyte and no service accounts.** Groups get no service accounts in
   this project (Charles), so Airbyte cannot reach our bucket or BigQuery. The
   database tables reach bronze through our own extractor (full batch and
-  incremental), running with the person's own Google login. Never put a
-  personal login or key into a tool to get around this.
+  incremental), running with the person's own Google login. Mounting your own
+  `gcloud` login read-only into your own local containers is how the course
+  labs work. A login or key never goes into an image, a repo or an outside tool.
 - **On Windows,** keep work in a short folder (for example `C:\de\`): paths
   over 260 characters break pip installs and Airflow logs.
 

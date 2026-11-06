@@ -1,7 +1,7 @@
 # How we work on this repo
 
 Read this once before your first change. [docs/workplan.md](docs/workplan.md)
-says who does what until session 5.
+says who does what in steps 5 to 11.
 
 ## 1. Set up your machine (once, about 30 minutes)
 
@@ -101,12 +101,10 @@ write into anyone else's.
    submitted review does not count as reviewed.
 
 5. **The author merges after approval,** with **Create a merge commit**. Never
-   squash: squashing replaces our individual commits with one. Then delete the
-   branch. The one exception, for now: Jane approves and merges Till's PRs
-   ([work plan](docs/workplan.md)).
+   squash: squashing replaces our individual commits with one. GitHub refuses
+   a merge without an approval, and deletes the branch after it.
 
-6. **Never push to `main`,** and never merge your own pull request without an
-   approval.
+6. **Never push to `main`:** GitHub refuses it too.
 
 ## 4. What never goes into git
 
