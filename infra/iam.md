@@ -3,7 +3,7 @@
 Every binding on the group's bucket and bronze dataset, copied from
 `gcloud storage buckets get-iam-policy gs://data-engineering-i1-g04` and
 `bq show --format=prettyjson data-engineering-i1:g04_bronze_1` on
-3 November 2026.
+6 November 2026.
 
 **There is no service account.** Groups get none in this project (Charles), so
 every job runs as one of our personal Google logins.
@@ -32,7 +32,8 @@ account.
 |---|---|---|---|
 | `projectOwners` | Owner | Dataset | Default, kept: the project's owners |
 | Till | Owner | Dataset | Created the dataset and runs the landing script |
-| Evaluna, Jane, Enzo | `roles/bigquery.dataViewer` | Dataset | Read bronze to build the warehouse (L04) and the dbt models (L05) |
+| Enzo | Owner | Dataset | Manages the dataset with Terraform (L08) |
+| Evaluna, Jane | `roles/bigquery.dataViewer` | Dataset | Read bronze for the dbt models (L05) and the governance work (L10) |
 
 `projectReaders` and `projectWriters`, which BigQuery adds to every new
 dataset, were removed on 3 November. Bronze holds names, addresses and phone

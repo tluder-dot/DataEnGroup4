@@ -19,7 +19,7 @@ School). Four students build it one layer per lesson:
 
 | Member | GitHub | Owns |
 |---|---|---|
-| Till Lüder | `tluder-dot` | step 5: dbt silver, gold and tests; `docs/architecture.md` |
+| Till Lüder | `tluder-dot` | step 5: dbt silver, gold and tests |
 | Jane Galthie | `jgalthie-sketch` | steps 6 and 7: images, Airflow |
 | Enzo Meret | `emeret-as` | steps 8 and 9: Terraform, FinOps |
 | Evaluna Barth | `evalunab` | steps 10 and 11: governance, ready to defend |
@@ -51,14 +51,13 @@ through an edit.
 - **Branch from an up-to-date `main`,** named `<area>/<what>`. The area is one
   of `docs`, `bronze`, `ingestion`, `warehouse`, `infra` or `setup`.
 - **One branch and one PR per deliverable.** Fill in the PR template and add
-  the reviewer named in the workplan.
+  the person the workplan names.
 - **Commit subjects say what the commit does, as an instruction.** The body
   says why. Never "update", "fix" or "wip".
 - **Never push to `main`.** Never force-push a branch someone else has pulled.
-  Never merge a PR that has no approving review.
-- **The reviewer approves; the author merges,** with **Create a merge commit**.
-  Never squash: squashing erases individual commits. GitHub refuses a merge
-  without an approval, so never look for a way around it.
+  Never merge your own PR.
+- **The next person in line reads the PR and merges it,** with **Create a merge
+  commit**. Never squash: squashing erases individual commits.
 - **No Claude attribution, anywhere:**
   - No `Co-Authored-By: Claude` trailer in commit messages.
   - No "Generated with Claude Code" line in PR descriptions or comments.
@@ -140,8 +139,8 @@ to this one: `docker compose up -d`.
     consequences, with the group's own measurements.
   - Once accepted, an ADR is never rewritten. A new ADR supersedes it. A
     proposed ADR may still be completed.
-- **`docs/architecture.md` has one owner, Till,** so the diagram never gets two
-  conflicting edits.
+- **`docs/architecture.md`:** the owner of each step adds their part in their
+  own PR.
 - **"Not handled" and "not done, because…" are good answers.** The course marks
   honest gaps up and invented results down.
 - **Exercise write-ups:** Exercise 1 pages go in `docs/exercises/`. Exercise 2

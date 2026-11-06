@@ -13,19 +13,18 @@ own extractor, with full batch as its main mode.
 
 ## Who owns what
 
-| Part | Member | Steps | ADRs | PRs reviewed by |
+| Part | Member | Steps | ADRs | PRs merged by |
 |---|---|---|---|---|
 | 1 | **Till** | 5: dbt silver, gold and tests | 0005 materialisations | Jane |
 | 2 | **Jane** | 6: images. 7: Airflow | 0006 image tags, 0007 idempotency | Enzo |
 | 3 | **Enzo** | 8: Terraform. 9: FinOps | 0008 remote state, 0009 cost attribution | Evaluna |
 | 4 | **Evaluna** | 10: governance. 11: ready to defend | 0010 data classification | Till |
 
-- **The next person in line reviews,** because their part builds on it.
-- **A review comes before the merge and says what was checked.** GitHub refuses
-  a merge without an approval. The author then merges.
-- **Every member needs a commit in every step:** the brief asks for it from step
-  7 on. The owner gives each other member one small task. Till's is the diagram,
-  because `docs/architecture.md` has one owner.
+- **Each member does their steps end to end.**
+- **The next person in line reads the PR and merges it,** because their part
+  builds on it. Nobody merges their own PR.
+- **`docs/architecture.md`:** the owner of each step adds their part in their
+  own PR, so the diagram stays current.
 - **Step 11 is for all four:** each member claims two ADRs and speaks in the
   video. Evaluna coordinates.
 
@@ -44,13 +43,13 @@ own extractor, with full batch as its main mode.
 
 ## Limits to check, not assume
 
-- **Step 7:** Airflow takes 7 containers and about 5.7 GB, so it needs a machine
-  with memory to spare. Without a service account, jobs run with the runner's
-  own `gcloud` login, mounted read-only into local containers, as in the L05 and
-  L07 labs.
+- **Step 7:** Airflow is 7 containers and about 5.7 GB of images on disk. The
+  brief gives no memory figure, so try it early, with the company stack running
+  beside it. Without a service account, jobs run with the runner's own `gcloud`
+  login, mounted read-only into local containers, as in the L05 and L07 labs.
 - **Step 8:** a service account cannot be declared, and project-level bindings
-  are not allowed. Write the gap in `docs/infra.md`. Till first makes Enzo an
-  owner of `g04_bronze_1`, so that Terraform can manage it.
+  are not allowed. Write the gap in `docs/infra.md`. Enzo is an owner of
+  `g04_bronze_1`, so that his Terraform can manage it.
 - **Step 9:** our logins may not reach budgets or the billing export.
   `JOBS_BY_PROJECT` is refused; use `JOBS_BY_USER`, and say so.
 - **Step 10:** creating policy tags may be refused. The brief asks for gaps to be
@@ -61,7 +60,6 @@ own extractor, with full batch as its main mode.
 Nothing waits for these, but the repository is graded on them.
 
 **Jane**
-- Submit a real review on #14 and #28, saying what was checked.
 - **Consumer fixes:**
   - The same columns and types in every file, as declared in
     `ingestion/clickstream_external.sql`. Today a batch without an order has no
@@ -82,8 +80,7 @@ Nothing waits for these, but the repository is graded on them.
 - Write your role in the README team table.
 
 **Till**
-- Submit a real review on #24, saying what was checked.
-- Delete the merged branches on GitHub. New ones delete themselves.
+- Delete the old merged branches on GitHub. New ones delete themselves.
 
 ## Not in this plan
 
