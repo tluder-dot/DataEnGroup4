@@ -124,8 +124,8 @@ it happens, tell the group and rotate the secret: the repo is **public**.
   date. Prices come with the date you read them. BigQuery figures are bytes
   processed with the query cache off, never bytes billed.
 - **ADRs:** copy `docs/adr/0000-template.md`. Use the number the work plan
-  reserves for you. One decision per ADR. Once merged, an ADR is never
-  rewritten: a new ADR supersedes it.
+  reserves for you. One decision per ADR. Once accepted, an ADR is never
+  rewritten: a new ADR supersedes it. A proposed ADR may still be completed.
 - **`docs/architecture.md` has one owner, Till,** so its diagram never gets two
   conflicting edits. Tell him what changed in your area, or comment on his PR.
 - **"Not handled" and "not done, because…" are good answers.** A guess written

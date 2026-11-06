@@ -137,7 +137,8 @@ to this one: `docker compose up -d`.
     reserves.
   - Each one records one decision: options, criteria, decision,
     consequences, with the group's own measurements.
-  - Once merged, an ADR is never rewritten. A new ADR supersedes it.
+  - Once accepted, an ADR is never rewritten. A new ADR supersedes it. A
+    proposed ADR may still be completed.
 - **`docs/architecture.md` has one owner, Till,** so the diagram never gets two
   conflicting edits.
 - **"Not handled" and "not done, because…" are good answers.** The course marks
