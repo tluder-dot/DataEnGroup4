@@ -1,0 +1,36 @@
+# The clickstream consumer as a service that keeps running (ADR 0003: a
+# continuous process, not a scheduled job). It runs beside Airflow, not inside
+# it, so stopping Airflow to free memory does not stop the clickstream.
+#
+# Start the albert-marketplace stack first: this service joins its network.
+# Stop any run of clickstream-g04 in a terminal first, so one process owns the
+# group. From the repo root:
+#     docker compose -f ingestion/compose.yaml up -d
+#     docker compose -f ingestion/compose.yaml logs -f
+name: group4-consumer
+
+services:
+  clickstream:
+    # The step 6 image, pinned by its tag (ADR 0006), never latest.
+    image: docker.io/jgalthie/group4-ingestion:20261112-cb64600
+    command: ["python", "consume_clickstream.py"]
+    # Started again after a crash or a Docker restart, not after a stop.
+    restart: unless-stopped
+    # Like Ctrl+C in a terminal: the consumer exits at once, without
+    # committing, and the next start rereads that batch (at least once).
+    stop_signal: SIGINT
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      # The group's committed offsets are where the service resumes.
+      CONSUMER_GROUP: clickstream-g04
+      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
+    volumes:
+      # Your own Google login, read only. Never in the image: no service account.
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/gcloud/adc.json:ro
+    networks: [marketplace]
+
+networks:
+  marketplace:
+    # Created by the albert-marketplace stack. kafka:9092 resolves there.
+    name: albert-marketplace_default
+    external: true
