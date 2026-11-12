@@ -18,7 +18,7 @@ the end of the course it holds the platform your group defends orally:
 |---|---|---|
 | Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | Coordination and setup; bronze (step 2), the extractor, data dictionary, architecture |
 | Evaluna Barth | [@evalunab](https://github.com/evalunab) | |
-| Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes, ADR 0003. Reviews Till's and Enzo's PRs |
+| Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes, ADR 0003. Steps 6 and 7: the images and the DAG, ADRs 0006 and 0007 |
 | Enzo Meret | [@emeret-as](https://github.com/emeret-as) | Step 4: native BigQuery tables, partitioning and clustering, daily demand materialised view, cost cap, slow-query runbook, ADR 0004 |
 
 ## How this repo grows
@@ -55,6 +55,34 @@ shared resources, branch and review rules) **and
   `.gitignore` blocks the usual names; it cannot catch everything.
 - **Keep `docs/architecture.md` current.** It is the diagram you present at the
   defence.
+
+## Run the jobs on a new machine
+
+You need Docker, and for anything that reads or writes BigQuery or the bucket,
+your own Google login: `gcloud auth application-default login`. The images
+run on Intel and Apple machines alike. Tags are listed in
+[ADR 0006](docs/adr/0006-image-registry-and-tags.md).
+
+```
+TAG=20261112-cb64600
+ADC="$HOME/.config/gcloud/application_default_credentials.json"
+
+# The dbt runner: check the connection, in your own dataset
+docker run --rm -v "$ADC":/gcloud/adc.json:ro \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/adc.json -e DBT_DATASET=sandbox_<initials> \
+  docker.io/jgalthie/group4-transform:$TAG debug --connection
+
+# The extractor, one table, into a local folder (needs the albert-marketplace stack)
+docker run --rm --network albert-marketplace_default \
+  -e DATABASE_URL=postgresql://postgres:postgres@db:5432/marketplace \
+  -e TABLE=product -e OUT=/data -v "$PWD/out":/data \
+  docker.io/jgalthie/group4-ingestion:$TAG
+```
+
+On Windows, write the paths as `C:/Users/<you>/...`. The full check, image
+deleted and pulled again, is in [docs/reproduce.md](docs/reproduce.md).
+
+**Tested on a machine from another group:** not yet.
 
 ## Layout
 
