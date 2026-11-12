@@ -55,3 +55,35 @@ Reads the topic `clickstream` and lands the events in
 `bronze/clickstream/dt=YYYY-MM-DD/`, with the rejected ones in
 `bronze/_dlq/clickstream/`. [clickstream_external.sql](clickstream_external.sql)
 makes them readable as `g04_bronze_1.clickstream_external`.
+
+### Run it as a service
+
+The consumer runs as a container that Docker starts again after a crash or a
+restart of Docker ([compose.yaml](compose.yaml), ADR 0003: a continuous
+process, beside Airflow, not inside it). It needs the `albert-marketplace`
+stack up, and your own Google login (`gcloud auth application-default login`).
+From the repo root:
+
+| To | Run |
+|---|---|
+| Start it | `docker compose -f ingestion/compose.yaml up -d` |
+| See that it runs | `docker compose -f ingestion/compose.yaml ps` |
+| Follow its log | `docker compose -f ingestion/compose.yaml logs -f` |
+| See how far behind it is | `docker exec albert-marketplace-kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --describe --group clickstream-g04` (the `LAG` column) |
+| Stop it | `docker compose -f ingestion/compose.yaml stop` |
+| Move to a new image | Change the tag in `compose.yaml`, then `up -d` again |
+
+**Stopping loses nothing.** The service resumes from the last offset it
+committed, and unread events wait in Kafka for 168 hours.
+
+**One reader only.** Never run `consume_clickstream.py` in a terminal with
+`CONSUMER_GROUP=clickstream-g04` while the service runs. Two readers of one
+group make Kafka share the partitions between them (a rebalance), and the
+consumer then writes the events still in its buffer twice: 240 rows on
+12 November. For a test, use another group, and `OUT` and `DLQ` in a local
+folder.
+
+**When your Google login expires,** writing to the bucket fails, the process
+stops before committing, and Docker starts it again, over and over. Nothing
+is lost, but nothing lands until you run
+`gcloud auth application-default login` again. Read from the code, not tested.
