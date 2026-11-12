@@ -108,9 +108,11 @@ europe-west1-docker.pkg.dev/data-engineering-i1/dataeng/group4-retention-probe  
   her access token can push and delete. If she is unavailable, nobody can
   publish. The token (read, write, delete) is never written to a file; she
   can revoke it from Docker Hub's settings.
-- **Left behind:** our images in the course's `dataeng` repository
-  (`group4-ingestion`, `group4-transform`, `group4-retention-probe`) cannot
-  be deleted by us. They are not used.
+- **Also in the course's `dataeng` repository:** every version is pushed
+  there too, as `group4-ingestion` and `group4-transform` with the same tag,
+  so the teaching team can see it. The pipeline pulls from Docker Hub only.
+  We cannot delete in `dataeng`, so retention does not run there: every
+  version stays, and so does the probe `group4-retention-probe`.
 - **What would change this decision:** delete rights on a course repository
   would bring the images back to a private registry next to our data. A
   group organisation on Docker Hub would remove the single owner.
