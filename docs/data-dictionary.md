@@ -501,7 +501,7 @@ from the storefront's generator, `albert-marketplace/generators/live/traffic.py`
 | Column | Type | Meaning | Personal data | Notes |
 |---|---|---|---|---|
 | `schema_version` | int64 | Version of the event's schema; picks the JSON Schema | No | 1 for every event so far |
-| `event_id` | string | Event ID, a UUID | No | Not unique in bronze: a crash between writing and committing writes a batch twice. Silver deduplicates on it |
+| `event_id` | string | Event ID, a UUID | No | **Not unique, for two reasons.** A crash between writing and committing, or a rebalance, writes events twice. And the storefront draws it from a random generator seeded with `TRAFFIC_SEED`, so every restart of the load generator reuses the same IDs for new events: 9,085 of 19,138 rows on 12 November. An event is (`event_id`, `emitted_at`), and silver deduplicates on that pair |
 | `event_type` | string | `product_viewed`, `added_to_cart` or `order_placed` | No | Decides which of the columns below are filled |
 | `event_time` | string | When the action happened, on the simulated clock | No | ISO 8601 in UTC, ending in `Z`. Same clock as `orders.order_date`, which runs 15 times faster than real time by default. Its date is the partition `dt=`. Text in bronze, not a timestamp |
 | `emitted_at` | string | When the storefront sent the event, in real UTC time | No | ISO 8601, ending in `Z`. Seen on 4 November: `event_time` 2026-09-15, `emitted_at` 2026-11-04 |
