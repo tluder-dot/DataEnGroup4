@@ -64,7 +64,7 @@ run on Intel and Apple machines alike. Tags are listed in
 [ADR 0006](docs/adr/0006-image-registry-and-tags.md).
 
 ```
-TAG=20261106-0e8643a
+TAG=20261112-cb64600
 ADC="$HOME/.config/gcloud/application_default_credentials.json"
 
 # The dbt runner: check the connection, in your own dataset
