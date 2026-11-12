@@ -1,7 +1,7 @@
 # ADR-0004: Keep BigQuery on demand, and cap every query
 
-- **Status:** proposed (Enzo to confirm or change the decision before review)
-- **Date:** 2026-11-05
+- **Status:** accepted
+- **Date:** 2026-11-05 (accepted by Enzo on 2026-11-06)
 - **Author:** Enzo Meret
 - **Lesson:** L04
 

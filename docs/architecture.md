@@ -56,7 +56,7 @@ them with dbt. The extractor and the consumer are our own
   reads the shop database.
 - **Gold:** consumers read nothing else. They never see bronze or silver.
 
-## What exists now (L05)
+## What exists now (L09)
 
 ```mermaid
 flowchart LR
@@ -89,6 +89,15 @@ flowchart LR
   wh --> mv
   ext -- "dbt" --> silver
   silver -- "dbt, tested" --> gold
+
+  subgraph iac["Terraform · infra/terraform/"]
+    tf["the bucket and 4 datasets<br/>labelled, plan: No changes"]
+    state[("gs://data-engineering-i1-g04-tfstate<br/>state, versioned")]
+  end
+
+  tf -.->|manages| gcs
+  tf -.->|manages| bq
+  tf --- state
 ```
 
 | What | Details | Who can read it |
@@ -98,13 +107,18 @@ flowchart LR
 | **The extractor** | `bronze/postgres/<table>/`: seven tables, replaced at each run. `bronze/postgres/_incremental/orders/` and a saved cursor ([ADR-0003](adr/0003-ingestion-modes.md)) | |
 | **The clickstream** | `bronze/clickstream/dt=YYYY-MM-DD/`, by `event_time`, at least once. Rejected events in `bronze/_dlq/clickstream/` | |
 | **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till and Enzo (owners), Evaluna and Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
-| **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), and the project's owners, editors and viewers |
-
+| **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
 | **Datasets** `g04_silver`, `g04_gold` | Built by dbt from `g04_bronze_1` ([transform/](../transform/README.md)): views for silver, tables for gold ([ADR-0005](adr/0005-materialisations.md)). Twins removed, every grain tested ([acceptance criteria](acceptance-criteria.md), [lineage](lineage.md)) | Till and Enzo (owners), Jane and Evaluna (BigQuery Data Editor), the project's owners ([access](../infra/iam.md)) |
+| **Images** | `jgalthie/group4-ingestion` (extractor and consumer) and `jgalthie/group4-transform` (dbt) on Docker Hub, tagged by date and commit, never `latest`, for amd64 and arm64 | |
+| **Terraform** | `infra/terraform/` declares the data bucket and the four datasets, adopted with import blocks until the plan said "No changes". Provider pinned, `fmt` and `validate` on every PR that touches `infra/` ([infra](infra.md)) | Enzo runs the plan and the apply |
+| **Terraform state** | `gs://data-engineering-i1-g04-tfstate`, versioned, made by hand because it cannot hold its own state ([ADR-0008](adr/0008-remote-state.md)) | The project's viewers, through the bucket's default bindings ([infra](infra.md)) |
+| **Labels** | `group`, `environment`, `layer`, `lesson` on everything Terraform manages ([ADR-0009](adr/0009-cost-attribution.md), [costs](costs.md)) | |
 
 **Not yet as in the target:**
 
 - **No service account** (Charles): jobs run as our own Google logins.
+- **Access is not in Terraform:** the dataset bindings were applied by hand
+  ([infra](infra.md), gaps).
 - **Nothing runs on a schedule:** a person starts each path (L07).
 - **Silver and the warehouse read the export.** Nothing reads the extractor's
   files yet.
@@ -127,8 +141,10 @@ flowchart LR
 | [0001](adr/0001-target-architecture.md) | Two-tier: raw Parquet in Cloud Storage, silver and gold in BigQuery, built with dbt | Accepted |
 | [0002](adr/0002-bronze-layout.md) | Bronze as snappy Parquet, one folder per table, `orders` by year; the three secret columns are never read | Accepted |
 | [0003](adr/0003-ingestion-modes.md) | Database tables in full batch, with an incremental cursor as a second mode; the clickstream as a stream, at least once | Accepted |
-| [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Proposed |
+| [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Accepted |
 | [0005](adr/0005-materialisations.md) | Silver as views, gold as tables rebuilt in full | Accepted |
+| [0008](adr/0008-remote-state.md) | Terraform state in a versioned bucket made by hand | Accepted |
+| [0009](adr/0009-cost-attribution.md) | Cost attributed with four resource labels | Accepted |
 
 ## Change log
 
@@ -139,3 +155,6 @@ flowchart LR
 | L03 | Three paths into bronze: the export, the extractor and the clickstream, with a dead letter queue. ADR-0003 |
 | L04 | The warehouse: seven native tables, the daily demand views, the query cap. ADR-0004 |
 | L05 | Silver and gold with dbt: the twin rule, the star, tests on every grain. ADR-0005 |
+| L06 | The jobs as pinned, non-root images on Docker Hub |
+| L08 | The bucket and the datasets declared in Terraform, with remote state and CI. ADR-0008 |
+| L09 | Labels on every managed resource. ADR-0009 |

@@ -515,9 +515,13 @@ from the storefront's generator, `albert-marketplace/generators/live/traffic.py`
 | `amount` | double | Order total | No | `order_placed` only. A float, not a decimal. In 33 of the 44 files |
 | `currency` | string | Currency of `amount` | No | `order_placed` only, always `EUR` in the generator. In 33 of the 44 files |
 | `items` | list of (`p_id` string, `qty` int64, `price` double) | The order's lines | No | `order_placed` only. `qty` stays an integer here. In 33 of the 44 files |
+| `extra_fields` | string | Fields the schema does not know, as JSON text | Unclassified | Empty unless the storefront adds a field. In files written from 6 November |
 
-**A file holds only the columns its batch needed:** a file without an order
-has no `order_id`. Reading the whole folder means merging different schemas.
+**From 6 November, every file has all these columns, with these types.** The
+44 files written on 5 November hold only the columns their batch needed (a
+file without an order has no `order_id`), and the file counts above are theirs.
+`g04_bronze_1.clickstream_external` reads both, because its columns are
+declared.
 
 ### Rejected events · `bronze/_dlq/clickstream/`
 
@@ -529,7 +533,7 @@ by the day they were rejected. Types read from the one file there on
 |---|---|---|---|---|
 | `raw` | string | The message exactly as it arrived | Unclassified | Can hold anything, including a `buyer_id` |
 | `reason` | string | Why it was rejected | No | The JSON or schema error |
-| `event_time` | string | **When it was rejected,** in real UTC time | No | Same name as in the events, different meaning |
+| `rejected_at` | string | When it was rejected, in real UTC time | No | Called `event_time` in the file written on 5 November |
 | `topic` | string | Kafka topic | No | `clickstream` |
 | `partition` | int64 | Kafka partition | No | With `offset`, finds the message again in Kafka |
 | `offset` | int64 | Position in the partition | No | |
