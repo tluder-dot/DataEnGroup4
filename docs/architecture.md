@@ -84,6 +84,7 @@ flowchart LR
   kafka -- "consume_clickstream.py<br/>at least once" --> stream
   kafka -.->|fails the schema| dlq
   landed -.->|read in place| ext
+  live -.->|read in place| ext
   stream -.->|read in place| ext
   ext -- "loaded once" --> wh
   wh --> mv
@@ -104,7 +105,7 @@ flowchart LR
 |---|---|---|
 | **Bucket** `gs://data-engineering-i1-g04` | `europe-west1`, Standard, uniform access. Files under `bronze/` move to Nearline at 30 days, Coldline at 90, Archive at 365; nothing is deleted ([lifecycle](../infra/README.md)) | The project's owners, editors and viewers, through the bucket's default bindings |
 | **The export** | `bronze/<table>/`: one file per table, `orders` by year of `order_date` ([ADR-0002](adr/0002-bronze-layout.md)) | |
-| **The extractor** | `bronze/postgres/<table>/`: seven tables, replaced at each run. `bronze/postgres/_incremental/orders/` and a saved cursor ([ADR-0003](adr/0003-ingestion-modes.md)) | |
+| **The extractor** | `bronze/postgres/<table>/`: seven tables, replaced at each run, read as `<table>_live`. `bronze/postgres/_incremental/orders/` and a saved cursor ([ADR-0003](adr/0003-ingestion-modes.md)) | |
 | **The clickstream** | `bronze/clickstream/dt=YYYY-MM-DD/`, by `event_time`, at least once. Rejected events in `bronze/_dlq/clickstream/` | |
 | **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till and Enzo (owners), Evaluna and Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
 | **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
@@ -120,8 +121,8 @@ flowchart LR
 - **Access is not in Terraform:** the dataset bindings were applied by hand
   ([infra](infra.md), gaps).
 - **Nothing runs on a schedule:** a person starts each path (L07).
-- **Silver and the warehouse read the export.** Nothing reads the extractor's
-  files yet.
+- **The warehouse still reads the export.** Silver reads the extractor's
+  tables, which hold the database of whoever ran it last.
 - **Silver still holds buyer IDs,** not pseudonymised (L10). Gold holds none.
 - **The files do not record their load time,** and rerunning the landing or a
   full batch replaces them instead of adding new ones.
