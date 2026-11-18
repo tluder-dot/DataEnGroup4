@@ -746,3 +746,37 @@ Not in this count: the dead letter queue files `bronze/_dlq/clickstream/`, which
 | `country` | STRING | `pii.location` | Country on a row that carries an identifier: where one person lives (rule: the class depends on the identifier on the row) |
 
 <!-- END GENERATED -->
+
+## Limits of this classification
+
+- **Gold is not anonymous.** It holds no identifier, so its columns are
+  `internal`. But `fct_order_items.order_id` is also in silver (`int_orders`),
+  next to a `buyer_id`: someone who can read both can find the buyer of a gold
+  row. Gold protects the buyer from analysts who cannot read silver, not from
+  people who can read both.
+- **Unclassified columns stay unclassified.** We did not read the text to judge
+  it, and profiling stops at counts and lengths. `review_text` and `review_title`
+  reach silver unchanged.
+- **`p_desc` contradicts the data dictionary.** We class it `unclassified`; the
+  dictionary marks it "No". Sellers type it freely, so it can hold a name or a
+  phone number. The dictionary's "No" says what the column is meant to hold, not
+  what it holds. `p_name`, a short title, is `internal`.
+- **`extra_fields` is not in BigQuery.** The clickstream consumer writes it into
+  the Parquet files from 6 November (data dictionary), but `clickstream_external`
+  does not expose it, so it is not in the counts above. It would be
+  `unclassified` if the table exposed it.
+- **`expiry_date` is classed by lack of a better class.** The scale has no card
+  class. It is landed by `ingestion/land_export.py` (Evaluna, step 2) and
+  no model reads it: no dbt model reads `payment_details` (searched in
+  `transform/models` and `warehouse/`). It is a candidate to stop landing
+  (data minimisation), a later change to that script. The same holds for the
+  other `pii.contact` columns of tables no model reads: `customer` (name,
+  email, phone), `payment_details` (billing address) and `seller` (name).
+- **A new column defaults to `internal`.** The script lists the columns that
+  matched none of its rules when it runs. Someone has to read that list after
+  every schema change, or a new personal column would be classed `internal`.
+- **Classes on views follow the source.** Every silver model is a view over bronze:
+  a class written here says what the column holds, not that anything enforces it.
+  Enforcement is a separate piece of work.
+- **Owners are people, not a team.** A column owned by one person also depends
+  on that person being reachable.
