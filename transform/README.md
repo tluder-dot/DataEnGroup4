@@ -38,5 +38,7 @@ never reaches gold.
 Three warnings are expected: 6 products have no name, 15 order lines round to
 0.00, and 16 lines belong to new customers who gave no address.
 
-In **L06** the dbt runner gets its Dockerfile here. In **L10** the PII-redaction
-model joins it.
+In **L06** the dbt runner gets its Dockerfile here. In **L10** the buyer ID is replaced by a
+salted hash in `stg_orders` and `stg_customer_shipping` (macro `pseudonymise`),
+and dropped from `stg_review` and `stg_clickstream`, which no model reads. The
+salt lives in `g04_secrets.pii_salt`, written once by `seed_pii_salt.py`.
