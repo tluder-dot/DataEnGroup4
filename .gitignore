@@ -42,6 +42,8 @@ crash.log
 
 # Airflow
 orchestration/logs/
+orchestration/config/
+orchestration/plugins/
 
 # Editors and OS
 .idea/
