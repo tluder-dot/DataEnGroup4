@@ -780,3 +780,79 @@ Not in this count: the dead letter queue files `bronze/_dlq/clickstream/`, which
   Enforcement is a separate piece of work.
 - **Owners are people, not a team.** A column owned by one person also depends
   on that person being reachable.
+
+## Access matrix
+
+Who may read or write which class of data, and what the platform grants today.
+The matrix is the target, by least privilege. The real grants were read on
+19 November 2026 (`gcloud storage buckets get-iam-policy` and `describe` on the
+two buckets, `bq show` on the four datasets) and the gaps between the two are
+listed below. Nothing in the cloud was changed to write this page.
+
+### Roles
+
+| Role | Held by | What it does |
+|---|---|---|
+| Analyst | Nobody today | Reads the figures of gold |
+| Transform engineer | Till | Runs the extractor, owns bronze, writes the dbt models |
+| Pipeline engineer | Jane | Writes the clickstream consumer and the DAG, runs the orchestrator |
+| Platform engineer | Enzo | Owns Terraform and `g04_warehouse` |
+| Governance owner | Evaluna | Owns the classes, the access matrix and the erasure check |
+| Orchestrator | Whoever starts Airflow, with their own Google login | Runs the extractor, recreates the `_live` tables, runs dbt |
+
+There is no service account: groups cannot create one in this project. The
+orchestrator therefore has the rights of the person who starts it, not the
+rights in the matrix (gap 8).
+
+### The matrix
+
+`read`: may read. `write`: may produce data of this class. `count`: may run
+counts and lengths, never print values. `no`: no access.
+
+| Role | `public` | `internal` | `pii.location` | `pii.identifier` | `pii.contact` | `unclassified` | `secret` |
+|---|---|---|---|---|---|---|---|
+| Analyst | read | read | no | no | no | no | no |
+| Transform engineer (Till) | read, write | read, write | read, write | read, write | read, write | read, write | no |
+| Pipeline engineer (Jane) | read, write | read, write | read, write | read, write | no | read, write | no |
+| Platform engineer (Enzo) | read, write | read, write | read | read | no | read | no |
+| Governance owner (Evaluna) | read | read | count | count | count | count | no |
+| Orchestrator | read, write | read, write | read, write | read, write | no | read, write | no |
+
+Why the cells say what they say:
+
+- **`public`** is empty today: nothing in the platform is published.
+- **`pii.contact` is `no` for Jane, Enzo and the orchestrator** because no dbt
+  model reads `customer`, `payment_details` or `seller`. The extractor does write
+  contact columns into the bronze files; that is a write, not a read from
+  BigQuery.
+- **The orchestrator reads and writes `pii.identifier`, `pii.location` and
+  `unclassified`** because dbt joins on `buyer_id`, keeps the country of each
+  buyer and copies the review text into silver.
+- **Enzo reads `pii.identifier`, `pii.location` and `unclassified`** because
+  `g04_warehouse` holds `buyer_id` (`orders_*`, `review`, `customer_shipping`),
+  the country of an address and the review text.
+- **The governance owner counts and never reads values**: profiling and checking
+  an erasure need counts and lengths only.
+- **`secret` is `no` for everyone**: those columns never enter the platform.
+
+### Separation of duties for an erasure
+
+The data owner runs the erasure and the governance owner checks it. Till, who
+owns bronze, silver and gold, deletes the person's rows. Evaluna then checks, by
+counts, that no row is left in any layer. Nobody checks their own deletion. The
+steps are in the erasure runbook.
+
+### When you need a `no`
+
+Every `no` has a way out, so that nobody routes around the rule:
+
+1. Open a GitHub issue that names the columns, the reason and how long you need
+   them.
+2. The owner of those columns (see Owners) approves or refuses in the issue.
+3. If approved, the governance owner records it here with its end date, and the
+   owner grants the right on those columns only, for that time.
+4. When the date passes, the right is removed and the entry is closed.
+
+This is informal on purpose: we have no ticket system and no way to expire a
+grant automatically. A grant nobody removes is the failure to watch.
+
