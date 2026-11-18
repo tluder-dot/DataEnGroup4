@@ -89,7 +89,8 @@ models:
       (event_id, emitted_at): the storefront reuses event_id after a restart.
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: [event_id, emitted_at]
+          arguments:
+            combination_of_columns: [event_id, emitted_at]
     columns:
       - name: event_id
         tests: [not_null]
