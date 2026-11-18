@@ -67,7 +67,7 @@ place in silver, or is left alone with a reason
 
 | # | Trap | Where | What goes wrong | Handled in |
 |---|---|---|---|---|
-| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) | Left out by every staging model |
+| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) | Not in the extractor's tables, which silver reads. `stg_category`, still read from the export, leaves it out |
 | 2 | **Leading zeros in text codes** | `customer.phone` (82,203 start with `0`), `shipping_details.phone` (125,861), `shipping_details.zip` (19,622), `p_id` (6 products, 30 order lines) | Read as numbers, they lose the zero: a 10-digit phone becomes 9 digits, and a `p_id` no longer joins | Bronze keeps the text, and staging never casts these columns |
 | 3 | **Codes that already lost their zeros** | `payment_details.cvv`: 961 with one digit, 8,440 with two | Never ingested, but a reminder of what trap 2 does | Left alone: `cvv` is never ingested |
 | 4 | **Strings that pandas reads as missing** | `customer.fname` (4), `review.r_desc` (13), `review.title` (21) | `None`, `NA`, `N/A`, `NULL` and `n/a` become nulls with pandas' defaults. Other spellings (`Na`, `none`) stay text | Left alone in `stg_review`: a reviewer can type them, and nothing tells them from a missing value |
@@ -94,7 +94,8 @@ Three paths into bronze:
   `bronze/postgres/<table>/`: `orders`, `order_items`, `review`,
   `product_reviews`, `product`, `customer_shipping`, `shipping_details`. It reads
   every column of these tables and adds none. Its types are those below,
-  without `csv_index`.
+  without `csv_index`. Read as `g04_bronze_1.<table>_live`: silver reads these,
+  not the export.
 - **The clickstream:** the events, landed by
   [`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py)
   into `bronze/clickstream/dt=YYYY-MM-DD/`. It adds no column: `dt` is in
@@ -501,7 +502,7 @@ from the storefront's generator, `albert-marketplace/generators/live/traffic.py`
 | Column | Type | Meaning | Personal data | Notes |
 |---|---|---|---|---|
 | `schema_version` | int64 | Version of the event's schema; picks the JSON Schema | No | 1 for every event so far |
-| `event_id` | string | Event ID, a UUID | No | Not unique in bronze: a crash between writing and committing writes a batch twice. Silver deduplicates on it |
+| `event_id` | string | Event ID, a UUID | No | **Not unique, for two reasons.** A crash between writing and committing, or a rebalance, writes events twice. And the storefront draws it from a random generator seeded with `TRAFFIC_SEED`, so every restart of the load generator reuses the same IDs for new events: 9,085 of 19,138 rows on 12 November. An event is (`event_id`, `emitted_at`), and silver deduplicates on that pair |
 | `event_type` | string | `product_viewed`, `added_to_cart` or `order_placed` | No | Decides which of the columns below are filled |
 | `event_time` | string | When the action happened, on the simulated clock | No | ISO 8601 in UTC, ending in `Z`. Same clock as `orders.order_date`, which runs 15 times faster than real time by default. Its date is the partition `dt=`. Text in bronze, not a timestamp |
 | `emitted_at` | string | When the storefront sent the event, in real UTC time | No | ISO 8601, ending in `Z`. Seen on 4 November: `event_time` 2026-09-15, `emitted_at` 2026-11-04 |

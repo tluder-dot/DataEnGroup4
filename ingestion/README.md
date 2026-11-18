@@ -49,6 +49,12 @@ do TABLE=$t python ingestion/extract_orders.py; done
 For a local test, set `OUT` to a folder. `CURSOR_OP`, `RETRIES` and
 `RETRY_DELAY` are settings too.
 
+Then recreate the tables dbt reads, so that their freshness moves:
+
+```
+bq --location=europe-west1 query --nouse_legacy_sql < ingestion/extract_external_tables.sql
+```
+
 ## The clickstream: `consume_clickstream.py`
 
 Reads the topic `clickstream` and lands the events in
