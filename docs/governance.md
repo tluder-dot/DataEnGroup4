@@ -928,3 +928,10 @@ What this cannot show: a job log lists queries, not a table preview in the
 console or a read through the API that creates no query job. It covers 30 days,
 and it does not say who would need access in the future.
 
+### Next reductions
+
+| Reduction | For | Risk | State |
+|---|---|---|---|
+| **B.** Jane on `g04_warehouse`: `roles/bigquery.dataViewer` to `roles/bigquery.metadataViewer` | Her 8 jobs there, 6 to 19 November 2026, only read metadata (`INFORMATION_SCHEMA`, `__TABLES__`) and the pipeline never reads the dataset. She keeps the lists of tables and columns and can no longer read rows, `buyer_id` included | No pipeline job breaks. Not verified: `__TABLES__` must still work with the metadata role, to be tested by Jane after the change. If Jane holds the same project-level role as Evaluna (gap 10), narrowing her dataset grant changes nothing: test it by reading a row as Jane after the change | Proposed to Enzo (code owner) and Jane (grant holder) on 2026-11-19; not applied. Access is not in Terraform (gap 12): two steps, add the metadata role, then remove the data role, in a separate pull request after their agreement |
+| **A.** Remove `projectViewer` from `g04-tfstate` | The state holds the members' email addresses | Terraform stops if the person running it relied on that binding; give Enzo and Till named access first | Not done. The bucket was made by hand, outside Terraform |
+| **C.** Evaluna: Writer to Reader on silver and gold | Governance needs counts, not writes | Setting a policy tag needs rights on the source table | Not done: wait for the enforcement work |
