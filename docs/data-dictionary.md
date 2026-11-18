@@ -67,7 +67,7 @@ place in silver, or is left alone with a reason
 
 | # | Trap | Where | What goes wrong | Handled in |
 |---|---|---|---|---|
-| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) | Left out by every staging model |
+| 1 | **An index column** with an empty header | 25 files, all but `order_items` and `payment` | It loads as an extra column (`Unnamed: 0`, `int64_field_0`) | Not in the extractor's tables, which silver reads. `stg_category`, still read from the export, leaves it out |
 | 2 | **Leading zeros in text codes** | `customer.phone` (82,203 start with `0`), `shipping_details.phone` (125,861), `shipping_details.zip` (19,622), `p_id` (6 products, 30 order lines) | Read as numbers, they lose the zero: a 10-digit phone becomes 9 digits, and a `p_id` no longer joins | Bronze keeps the text, and staging never casts these columns |
 | 3 | **Codes that already lost their zeros** | `payment_details.cvv`: 961 with one digit, 8,440 with two | Never ingested, but a reminder of what trap 2 does | Left alone: `cvv` is never ingested |
 | 4 | **Strings that pandas reads as missing** | `customer.fname` (4), `review.r_desc` (13), `review.title` (21) | `None`, `NA`, `N/A`, `NULL` and `n/a` become nulls with pandas' defaults. Other spellings (`Na`, `none`) stay text | Left alone in `stg_review`: a reviewer can type them, and nothing tells them from a missing value |
@@ -94,7 +94,8 @@ Three paths into bronze:
   `bronze/postgres/<table>/`: `orders`, `order_items`, `review`,
   `product_reviews`, `product`, `customer_shipping`, `shipping_details`. It reads
   every column of these tables and adds none. Its types are those below,
-  without `csv_index`.
+  without `csv_index`. Read as `g04_bronze_1.<table>_live`: silver reads these,
+  not the export.
 - **The clickstream:** the events, landed by
   [`ingestion/consume_clickstream.py`](../ingestion/consume_clickstream.py)
   into `bronze/clickstream/dt=YYYY-MM-DD/`. It adds no column: `dt` is in

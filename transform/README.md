@@ -4,7 +4,7 @@ The dbt project that turns bronze into silver and gold: step 5 of the course.
 
 | Layer | Folder | Becomes | Dataset |
 |---|---|---|---|
-| Bronze | `models/sources.yml` | Declared, never written | `g04_bronze_1` |
+| Bronze | `models/sources.yml` | Declared, never written: the extractor's `<table>_live` tables, the export's `category`, the clickstream | `g04_bronze_1` |
 | Silver | `models/staging/`, `models/intermediate/` | Views | `g04_silver` |
 | Gold | `models/marts/` | Tables | `g04_gold` |
 
@@ -35,8 +35,8 @@ it set while you try things. Always use `dbt build`, never `dbt run` then
 `dbt test`: `build` skips what sits downstream of a failed test, so bad data
 never reaches gold.
 
-Two warnings are expected: 6 products have no name, and 15 order lines round to
-0.00.
+Three warnings are expected: 6 products have no name, 15 order lines round to
+0.00, and 16 lines belong to new customers who gave no address.
 
 In **L06** the dbt runner gets its Dockerfile here. In **L10** the PII-redaction
 model joins it.
