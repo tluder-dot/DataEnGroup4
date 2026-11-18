@@ -115,8 +115,9 @@ with DAG(
     catchup=False,
     # Two runs would extract into the same files at the same time.
     max_active_runs=1,
-    # At most two containers at once: the laptop has 5 GB for Docker.
-    max_active_tasks=2,
+    # One container at a time: with two, the 8 GB laptop ran out of memory
+    # on 18 November. The triggerer is stopped too: no task here defers.
+    max_active_tasks=1,
     default_args={
         # Three attempts in all. Each extractor attempt already retries the
         # database for about a minute (5 tries, delay doubling from 2 s), so
