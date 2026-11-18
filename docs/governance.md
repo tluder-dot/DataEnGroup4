@@ -856,3 +856,75 @@ Every `no` has a way out, so that nobody routes around the rule:
 This is informal on purpose: we have no ticket system and no way to expire a
 grant automatically. A grant nobody removes is the failure to watch.
 
+### What the platform grants today
+
+Read on 19 November 2026.
+
+| Resource | Principal | Role |
+|---|---|---|
+| Bucket `g04` (bronze files) | `projectOwner`, `projectEditor` | Bucket and object owner |
+| Bucket `g04` | `projectViewer` | Bucket and object reader |
+| Bucket `g04-tfstate` (Terraform state) | Same three bindings as `g04` | Same |
+| `g04_bronze_1` | Till, Enzo | Owner |
+| `g04_bronze_1` | Evaluna, Jane | Reader |
+| `g04_silver`, `g04_gold` | Till, Enzo | Owner |
+| `g04_silver`, `g04_gold` | Evaluna, Jane | Writer |
+| `g04_warehouse` | Enzo | Owner |
+| `g04_warehouse` | Jane | Reader |
+| Every dataset | `projectOwners` | Owner |
+
+Neither bucket has a binding we added. Settings read the same day: both have
+uniform bucket-level access and a soft delete of 7 days; `g04` has no object
+versioning, `g04-tfstate` has it on and blocks public access. The project's own
+IAM policy cannot be read (`gcloud projects get-iam-policy` is refused), so a
+role granted at project level is invisible here.
+
+### Gaps between the matrix and the platform
+
+| # | Gap | The matrix says | Reality | Can we close it? |
+|---|---|---|---|---|
+| 1 | Anyone with Viewer on the project reads all the bronze files | Only the roles that need bronze | `projectViewer` reads contacts, addresses and free text | Yes, on the bucket. Risk: our own reads of the external tables may depend on it (see note) |
+| 2 | Anyone with Viewer reads the Terraform state | Enzo and Till only | The state holds the dataset access lists, so the members' email addresses | Yes, on the bucket. Risk: Terraform may stop if our own access relies on it |
+| 3 | Jane can read the rows of `g04_warehouse` | Metadata only: the pipeline does not read it | No file under `orchestration/` or `transform/` reads it. Her jobs there, 6 to 19 November, only read metadata (see "What the audit showed") | Yes: narrow her role to metadata viewer, with Enzo's agreement and through Terraform (gap 12) |
+| 4 | Evaluna is Writer on silver and gold | `count` only | She can read `buyer_id` and write in silver and gold | Yes: Writer to Reader. Risk: tagging columns will need rights on the source tables |
+| 5 | Till is Owner of `g04_bronze_1`, silver and gold | Editor is enough | Owner can change the access list and delete the dataset | Yes, with Till's agreement. Enzo's Owner is needed for Terraform |
+| 6 | Enzo is Owner of bronze, silver and gold | `pii.contact`: no | An Owner reads every column | Not until columns carry policy tags |
+| 7 | Jane and Evaluna read all of `g04_bronze_1` | Jane: no `pii.contact`. Evaluna: `count` | A dataset Reader reads every column | Not until columns carry policy tags |
+| 8 | There is no service account | An orchestrator with limited rights | The orchestrator runs with the login of the person who starts it, so with all of that person's rights | No: groups cannot create one |
+| 9 | `projectOwners` is Owner everywhere | | Default, kept: the course's owners | Accepted |
+| 10 | A project-level role is wider than the dataset grants, and invisible | Access follows the dataset grants | `testIamPermissions` on 19 November 2026 shows Evaluna's login holds `bigquery.tables.getData` on `g04_warehouse.orders_month`, where the dataset lists her nothing, so a project-level role gives it. We cannot list that role or say who else holds it | No: `resourcemanager.projects.getIamPolicy` is denied |
+| 11 | No analyst exists | Reader on gold only | The Analyst row cannot be tested against anyone | No |
+| 12 | Terraform does not manage any access | Access changes go through `plan` | `infra/terraform/` declares no `access` block and no IAM resource: it owns the containers, not who may read them | Yes: one `google_bigquery_dataset_iam_member` per grant, not a full `access` list (one dataset first) |
+
+**Note on gaps 1 and 2.** An external table reads the files with the rights of
+the person who queries it, so a dataset Reader also needs to read the bucket.
+Removing `projectViewer` could stop our own reads. This is a hypothesis to test,
+not something we measured.
+
+### What the audit showed
+
+The brief asks to find out what reads a dataset before changing access.
+
+- **Cloud Logging can be read.** A first `gcloud logging read` on 19 November 2026
+  failed with `UNAUTHENTICATED: Request had invalid authentication credentials`:
+  the login had expired, it was not a refusal. After logging in again it worked.
+  The `activity` log holds 47 entries naming `g04_warehouse` over 30 days, all
+  Enzo's: creating and updating the dataset, 19 job inserts on 5 November, and
+  table deletions on 5 and 19 November. The `data_access` log exists but holds
+  no BigQuery entry in the same 30 days, so it cannot show who read rows. Cloud
+  Logging therefore adds nothing about Jane; `JOBS_BY_PROJECT` is our evidence.
+- **`INFORMATION_SCHEMA.JOBS_BY_PROJECT` could be read** for our login on
+  19 November 2026 (175,112,192 bytes needed, cache off). The group's working
+  rules say it is refused; that is no longer what we see.
+- **Who queried `g04_warehouse` in the last 30 days** (jobs that name it):
+  Enzo 238 jobs, the course's `bigquery-adminbot` 14 jobs on 5 November, Jane 8
+  jobs, Evaluna 6 jobs.
+- **Jane's 8 jobs, from 6 to 19 November, only read metadata**:
+  `INFORMATION_SCHEMA.TABLES`, `.COLUMNS`, `.PARTITIONS` and `__TABLES__`. None
+  read a data table. Evaluna's 6 are metadata reads too (`INFORMATION_SCHEMA`,
+  to write this page).
+
+What this cannot show: a job log lists queries, not a table preview in the
+console or a read through the API that creates no query job. It covers 30 days,
+and it does not say who would need access in the future.
+
