@@ -3,17 +3,18 @@ version: 2
 sources:
   - name: marketplace
     description: >
-      Bronze: the external tables over the export and the clickstream. Read by
-      dbt, never written. The tables run nightly from L07, so each threshold
-      says what breaks, and for whom, when a load is missed. Freshness reads
-      the table's last-modified time, which moves when the table is recreated,
-      not when a file lands: a loading job must recreate its table, or the
-      check stays stale. The clickstream has a real time column, so it uses that.
+      Bronze, read by dbt and never written: the extractor's seven tables
+      (<table>_live), the export's category and the clickstream. The tables
+      load nightly from L07, so each threshold says what breaks, and for whom,
+      when a load is missed. Freshness reads when a table was last recreated,
+      not when a file landed, so the pipeline recreates the _live tables after
+      each extraction (ingestion/extract_external_tables.sql). The clickstream
+      has a real time column, so it uses that.
     database: data-engineering-i1
     schema: g04_bronze_1
     tables:
       - name: orders
-        identifier: orders_external
+        identifier: orders_live
         description: >
           Warn after 25 hours: one nightly load was missed, and analysts report
           yesterday's revenue as today's. Error after 49 hours: two were missed,
@@ -23,14 +24,14 @@ sources:
             warn_after: {count: 25, period: hour}
             error_after: {count: 49, period: hour}
       - name: order_items
-        identifier: order_items_external
+        identifier: order_items_live
         description: Same thresholds as orders, because revenue needs both on the same day.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
             error_after: {count: 49, period: hour}
       - name: product
-        identifier: product_external
+        identifier: product_live
         description: >
           Warn after 3 days, error after 7. Facts use the price paid, so a stale
           catalogue only leaves new products without a name in dim_product.
@@ -40,9 +41,11 @@ sources:
             error_after: {count: 7, period: day}
       - name: category
         identifier: category_external
-        description: No freshness. Two rows that have not changed since the export.
+        description: >
+          No freshness, and read from the export, because the extractor does not
+          carry it: two rows that have not changed since.
       - name: review
-        identifier: review_external
+        identifier: review_live
         description: >
           Warn after 7 days, error after 14. Ratings move slowly: a product's
           average barely changes in a week, and only marketing reads it.
@@ -51,14 +54,14 @@ sources:
             warn_after: {count: 7, period: day}
             error_after: {count: 14, period: day}
       - name: product_reviews
-        identifier: product_reviews_external
+        identifier: product_reviews_live
         description: Same thresholds as review, because the ratings need both.
         config:
           freshness:
             warn_after: {count: 7, period: day}
             error_after: {count: 14, period: day}
       - name: customer_shipping
-        identifier: customer_shipping_external
+        identifier: customer_shipping_live
         description: >
           Warn after 14 days, error after 30. A stale address only matters when
           a buyer moves country, and that moves a few rows of daily demand.
@@ -67,7 +70,7 @@ sources:
             warn_after: {count: 14, period: day}
             error_after: {count: 30, period: day}
       - name: shipping_details
-        identifier: shipping_details_external
+        identifier: shipping_details_live
         description: Same thresholds as customer_shipping, because the country needs both.
         config:
           freshness:
