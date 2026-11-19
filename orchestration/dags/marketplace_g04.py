@@ -75,7 +75,7 @@ def alert(context):
     """
     ti = context["task_instance"]
     text = (f"ALERT {ti.dag_id}.{ti.task_id} failed for "
-            f"{context['data_interval_start']:%Y-%m-%d} after {ti.try_number} tries. "
+            f"{context['data_interval_start']:%Y-%m-%d}, attempt {ti.try_number}, no retry left. "
             f"Runbook: docs/runbooks/failed-run.md")
     print(text, flush=True)
     if not ALERT_WEBHOOK:
