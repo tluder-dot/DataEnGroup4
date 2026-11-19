@@ -17,7 +17,7 @@ the end of the course it holds the platform your group defends orally:
 | Name | GitHub | Role |
 |---|---|---|
 | Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | Coordination and setup; bronze (step 2), the extractor, data dictionary, architecture |
-| Evaluna Barth | [@evalunab](https://github.com/evalunab) | |
+| Evaluna Barth | [@evalunab](https://github.com/evalunab) | Step 10: governance (data classification, access, PII protection, erasure runbook, ADR 0010). Step 11: coordinates the video and pitch. Merges Enzo's PRs |
 | Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes, ADR 0003. Steps 6 and 7: the images and the DAG, ADRs 0006 and 0007 |
 | Enzo Meret | [@emeret-as](https://github.com/emeret-as) | Step 4: native BigQuery tables, partitioning and clustering, daily demand materialised view, cost cap, slow-query runbook, ADR 0004 |
 
