@@ -47,6 +47,7 @@ added after the original extract, do not have it. The tables below list it as
 | `buyer`, `orders`, `wishlist_item`, `cart`, `returns` | `buyer_id` |
 | `review` | `buyer_id`; `r_desc` and `title` unclassified |
 | `review_images` | `review_img` unclassified |
+| `product` | `p_desc` unclassified |
 | `seller`, `seller_products`, `seller_reviews` | `seller_id` (and `seller.seller_name`, empty) |
 | `customer_shipping`, `customer_payment`, `subscription` | `c_id` |
 | `clickstream` events | `buyer_id` (`session_id` is not, see [Clickstream](#clickstream)) |
@@ -54,9 +55,9 @@ added after the original extract, do not have it. The tables below list it as
 **Never ingested:** `customer.pwd`, `payment_details.card_no` and
 `payment_details.cvv`, in bold above.
 
-The other 11 tables hold no personal column: `product`, `category`,
-`product_images`, `product_reviews`, `order_items`, `payment`, `shipment`,
-`carrier`, `discount`, `daily_deals`, `cart_items`. `order_items` and `payment`
+The other 10 tables hold no personal column: `category`, `product_images`,
+`product_reviews`, `order_items`, `payment`, `shipment`, `carrier`,
+`discount`, `daily_deals`, `cart_items`. `order_items` and `payment`
 still belong to a buyer, through `orders`.
 
 ## Traps in the export
@@ -359,7 +360,7 @@ The catalogue, with current price and stock. Key: `p_id`.
 | *(index)* | integer | Export row number | No | Not in the source table |
 | `p_id` | varchar(10) | Product ID (an Amazon ASIN) | No | **Text, not a number:** 10 characters, 6 start with `0` (`0124784577`) |
 | `p_name` | varchar(1000) | Product name | No | 6 empty |
-| `p_desc` | varchar(5000) | Product details, as JSON whose fields vary by product | No | Semi-structured |
+| `p_desc` | varchar(5000) | Product details, as JSON whose fields vary by product | Unclassified | Semi-structured. Sellers type it freely, so it can hold anything ([governance](governance.md)) |
 | `price` | numeric | Current catalogue price, in euros | No | 35,205 prices have more than two decimals. Lowest 0.00043 (5 round to 0.00), highest 2,143.46 |
 | `qty` | integer | Units in stock | No | 1 to 100 |
 | `category_id` | integer | → `category` | No | 1 or 2 |
