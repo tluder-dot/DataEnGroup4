@@ -1,12 +1,13 @@
 # Ingestion failure modes
 
 What can go wrong on each path into bronze, whether we handle it, and what
-happens if it occurs. State on 6 November 2026. Every figure says where it
+happens if it occurs. State on 18 November 2026. Every figure says where it
 comes from; the commands are under [Evidence](#evidence).
 
 Three paths write into bronze ([ADR 0003](adr/0003-ingestion-modes.md)): the
-export, the clickstream consumer and the extractor. A person starts each of
-them by hand: nothing runs on a schedule before L07.
+export, the clickstream consumer and the extractor. The consumer runs as a
+Docker service that restarts itself ([`ingestion/compose.yaml`](../ingestion/compose.yaml));
+a person starts the export and the extractor by hand until the DAG (L07).
 
 ## Where the credentials live
 
@@ -46,17 +47,19 @@ At least once: each file is written before its Kafka offset is committed.
 | Deletes | Not handled | | No event deletes anything, and bronze never deletes: [the lifecycle rules](../infra/lifecycle.json) only move files to colder classes. Erasing one buyer's events on request (GDPR) would mean rewriting every file that holds their `buyer_id`. We have no tool for it |
 | Kafka down | Partly, not tested | The client library retries the connection; the loop prints `kafka error` and keeps polling | Nothing is read or written while it is down. Nothing is lost on our side, because the committed offset does not move. Not tested |
 | Consumer stopped, restarted within retention | Yes | The offset committed in the consumer group | It resumes at the first message it had not committed |
-| Consumer stopped longer than retention | **Not handled** | | Kafka deletes messages after 168 hours, or earlier once the topic passes 256 MiB. Unread messages older than that are lost for good, and no one is warned. Nothing starts the consumer on a schedule yet (L07) |
-| Malformed event | Yes | JSON parsing, then the schema, before an event is accepted | The message goes to `bronze/_dlq/clickstream/` with the raw message, the reason, the time, the topic, the partition and the offset. The flow continues. Tested: 4 broken messages, all 4 in the DLQ, the consumer kept writing |
+| Process crashes, or Docker restarts | Yes | `restart: unless-stopped` in `ingestion/compose.yaml` | Docker starts the consumer again, and it resumes at the offsets it committed. Tested: `kill -INT 1` in the container gave `restarts=1 status=running`, then reading resumed |
+| Consumer stopped longer than retention | Partly | The service restarts itself while Docker runs; nothing covers a machine left off | Kafka deletes messages after 168 hours, or earlier once the topic passes 256 MiB, but only in closed log segments. Measured on 12 November: after 7 days without a consumer, 9,584 events were waiting and none was lost, because the site was stopped too and the segment holding them stayed open. With the site running and the consumer stopped, 168 hours is a real limit, and no one is warned |
+| Malformed event | Yes | JSON parsing, then the schema, before an event is accepted | The message goes to `bronze/_dlq/clickstream/` with the raw message, the reason, the time, the topic, the partition and the offset. The flow continues. Tested: 4 broken messages, all 4 in the DLQ, the consumer kept writing. On 12 November, 3 more arrived, invalid JSON, origin unknown |
 | Impossible date | Yes | A date parse after the schema | `2026-13-45T00:00:00Z` has the right shape but no such day. It goes to the DLQ (`month must be in 1..12`) instead of crashing the whole batch |
 | Schema change: new field | Partly | The schema accepts unknown fields | Events keep landing. The new field is kept as JSON text in `extra_fields`, so every file keeps the same columns. Nobody is alerted |
 | Schema change: missing or renamed field, wrong type | Yes | The schema | Every such event goes to the DLQ with its reason. Bronze misses them until the schema is updated and the DLQ replayed |
 | Schema change: new `schema_version` | Yes | The consumer picks the schema by `schema_version` | An unknown version goes to the DLQ (`unknown schema_version: 2`, tested). Accepting it takes a new schema file and one line in `SCHEMAS` |
 | Replaying the DLQ | **Not handled** | | Each row keeps the topic, partition and offset to find the message again, but no tool replays it |
 | Duplicate after restart | Yes, by design | At least once | A crash between writing a file and committing its offset writes that batch again. Measured: 200 duplicates after one crash, exactly one batch (`BATCH=200`). Silver deduplicates on (`event_id`, `emitted_at`): `event_id` alone repeats after every restart of the load generator |
-| Expiring credential | **Not handled** | | If the application default credentials can no longer refresh, the write in `flush()` raises and the process stops before committing. After the person logs back in, the batch is read again: no loss, possible duplicates. Read from the code, not tested. The `gcloud` login did lapse on 5 November and asked for a password |
+| Two readers in one group | **Not handled** | | A second `consume_clickstream.py` with `CONSUMER_GROUP=clickstream-g04` makes Kafka share the partitions (a rebalance). The client then rereads from the committed offset while the buffer still holds rows already read, so they are written twice. Measured on 12 November: 240 rows with the same `event_id` and `emitted_at`, after a terminal and the service read together for a few minutes. Avoided by running only the service ([`ingestion/README.md`](../ingestion/README.md)) |
+| Expiring credential | **Not handled** | | If the application default credentials can no longer refresh, the write in `flush()` raises and the process stops before committing. Docker then starts it again, over and over, until the person logs back in: no loss, possible duplicates. Read from the code, not tested. The `gcloud` login did lapse on 5 November and asked for a password |
 | Write refused on the bucket | **Not handled** | | Same as an expired credential: the process stops before committing |
-| Small files | Partly | A file at most every 15 minutes (`FLUSH_EVERY_S`), or when a batch of 200 is full | On 5 November the consumer wrote whenever the topic was quiet for a second: files of 1 to 11 rows. The size of the new files is still to measure |
+| Small files | Yes | A file when a batch of 200 is full, or at most every 15 minutes (`FLUSH_EVERY_S`) | On 5 November the consumer wrote whenever the topic was quiet for a second: 44 files, 17 of them with 10 rows or fewer. Measured on 12 November: 70 files, 11,597 rows, every write took exactly 200 messages, about 6 minutes of traffic, so the 15-minute limit never fired. A smaller file comes from a batch split across two `event_time` dates (197 and 3) |
 | Nobody watching | **Not handled** | | No alert when the DLQ fills, the consumer stops or a login lapses |
 
 ## Database tables: PostgreSQL → bronze
@@ -96,3 +99,7 @@ On the local `albert-marketplace` stack: the consumer's and CDC tests by Jane on
 | Updates and deletes | A test order and an update of an old order, both modes, then the delete, both modes | Full batch saw the update and the delete. Incremental saw neither |
 | Source down | `docker compose stop db`, `RETRIES=4`, `RETRY_DELAY=1`; then again with the database started during the retries | Exit code 1 after 7.3 s, no file written; then 42,858 rows written |
 | Full run | The seven tables, three times, to the bucket; once to a local folder | 244, 361 and 429 s; 5.5 s. Row counts equal the database's: 1,298,413 |
+| Restart of the service | `kill -INT 1` inside `group4-consumer-clickstream-1`, then `docker inspect` | `restarts=1 status=running`; reading resumed at the committed offsets (12 November, Jane) |
+| Seven days without a consumer | `kafka-consumer-groups.sh --describe --group clickstream-g04` and `kafka-get-offsets.sh --time -2` | Lag 3,222 + 3,200 + 3,162 = 9,584; first offset still 0 on all three partitions (16:58 UTC, 12 November) |
+| File sizes | Rows and bytes of every file in `bronze/clickstream/` | 70 files, 11,597 rows, median 25,612 bytes; every write 200 messages (about 18:00 UTC, 12 November) |
+| Two readers | A terminal and the service on `clickstream-g04` for a few minutes | 240 rows written twice, same `event_id` and `emitted_at` (17:50 UTC, 12 November) |
