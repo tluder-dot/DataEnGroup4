@@ -116,6 +116,8 @@ Street, zip code and phone are not needed here, so gold never holds them.
 
 ## Open questions
 
+- **Buyers without an address.** Confirmed on 18 November: new customers sign
+  up without one, so 13 orders had no country. Gold counts them under `Unknown`.
 - **Address changes.** If a buyer changes default address, today's join moves
   their past orders to the new country. Once CDC arrives (L03), use the address
   that was the default on the order date.

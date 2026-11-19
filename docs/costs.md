@@ -91,10 +91,9 @@ Measured on 5 November 2026 in `g04_warehouse`:
 day is 0.00084 TiB, and a month of such days is 0.025 TiB against 1 TiB free
 ([ADR 0004](adr/0004-warehouse-pricing.md)).
 
-- **We keep 15 tables for 7 sources.** The untuned copies and the variants
-  (`order_items_day`, `_year_pc`, ...) exist to measure. They cost
-  $0.0043 per month together and can be dropped once the tuning page is
-  accepted, keeping `orders_month`, `order_items_month_pc` and the lookups.
+- **We kept 15 tables for 7 sources, then dropped 7 of them on 19 Nov.** The
+  variants (`order_items_day`, `_year_pc`, ...) existed to measure. They are
+  gone; see "One optimisation" below.
 - **The capped worst case per query** is 104,857,600 bytes ÷ 2^40 × $7.50 =
   $0.0007.
 - **At 1,000× the data** the tables would be 249 GiB, $4.99 per month in
@@ -167,7 +166,7 @@ What we would set, and who:
 - **Named person:** Enzo Méret (`emeret@albertschool.com`) for the group's
   alerts, with Till Lüder as the second recipient.
 - **Amount and thresholds:** $1 per month for the group, alerts at 50 %, 90 %
-  and 100 %. The current spend is about $0.008 per month (ledger below), so
+  and 100 %. The current spend is about $0.005 per month (ledger below), so
   $1 is more than 100× what we use: an alert means something is wrong, not that
   we are close.
 - **Where:** a budget filtered on the label `group=g04`. This only works for
@@ -181,10 +180,12 @@ through that script.
 
 ### The largest cost
 
-**Recurring: BigQuery storage in `g04_warehouse`,** $0.0050 per month, 65 % of
-the group's $0.0077 monthly total (ledger). SKU: BigQuery *active logical
+**Recurring: BigQuery storage in `g04_warehouse`,** $0.0050 per month on
+6 Nov, 65 % of the group's $0.0077 monthly total (ledger); $0.0027 and 50 % of
+$0.0054 since the drop on 19 Nov. SKU: BigQuery *active logical
 storage*, billed per GiB-hour. Shape: constant. It grows only when we load or
-build a table, and the 7 variant tables are 45 % of it.
+build a table. On 6 Nov the 7 variant tables were 45 % of it; they were
+dropped on 19 Nov, which takes it to $0.0027 per month.
 
 **One-off: the query burst of 5 Nov 2026.** Source:
 `INFORMATION_SCHEMA.JOBS_BY_USER`, `region-europe-west1`, last 30 days, cache
@@ -210,40 +211,51 @@ pricing page names for this storage, and the query figure comes from units
 (bytes), as the brief allows. The jobs cover only Enzo's login, not Till's,
 Evaluna's or Jane's.
 
-### One optimisation: drop the seven variant tables (proposed, not done)
+### One optimisation: drop the seven variant tables (done, 19 November 2026)
 
-`g04_warehouse` keeps seven tables that only exist to measure
+`g04_warehouse` kept seven tables that only existed to measure
 ([tuning](warehouse-tuning.md)): `order_items_plain`, `_day`, `_month`,
 `_year_pc`, `_clustered`, `review_c` and `product_reviews_pc`. No materialised
-view and no dbt model reads them: the three views read `order_items_month_pc`
-and `orders_plain`, which stay.
+view and no dbt model reads them: the three views read `order_items_month_pc`,
+`orders_plain`, `customer_shipping` and `shipping_details`, which stay. Checked
+on 19 Nov by reading each view's query (`mview_query`) and by searching the repo.
 
-| | Before | After |
+**Change.** On 19 Nov 2026, 13:21 UTC, Enzo dropped the seven tables with the
+BigQuery API, after listing them and confirming (the project's rule: show what,
+wait for a yes). Nothing else was touched.
+
+| | Before (19 Nov, 13:21 UTC) | After (19 Nov, 13:21 UTC) |
 |---|---|---|
-| Bytes in `g04_warehouse` | 267,697,890 (0.2493 GiB) | 145,967,988 (0.1359 GiB) |
+| Objects in `g04_warehouse` | 18 | 11 |
+| Bytes (`__TABLES__`, cache off) | 267,697,890 (0.2493 GiB) | 145,967,988 (0.1359 GiB) |
 | Storage at $0.020 per GiB-month | $0.00499 | $0.00272 |
-| **Saving** | | **$0.0023 per month** (121,729,902 bytes) |
+| **Saving** | | **121,729,902 bytes, 0.1134 GiB, $0.0023 per month at list price** |
 
-Sources: sizes from `__TABLES__` of each dataset, 6 Nov 2026; price from the
-course's lecture 4, read 24 Sep 2026. A rebuild is
-`warehouse/02_tuned_tables.sql`.
+Sources: `INFORMATION_SCHEMA`-style `__TABLES__` of `g04_warehouse`, read before
+and after the drop; price from the course's lecture 4, read 24 Sep 2026. The
+three views still answer after the drop (rows: 356,981, 365,512 and 165,141).
+A rebuild of any table is `warehouse/02_tuned_tables.sql`.
 
-**Not done, because** Enzo decided on 6 Nov 2026 not to delete cloud resources for this
-saving, and because of the failure conditions below. The
-figures are what the saving *would* be.
+**Where the saving does not show.** BigQuery's first 10 GiB of storage per
+month is free ([pricing](https://cloud.google.com/bigquery/pricing), read
+6 Nov 2026). We hold under 0.2 GiB in BigQuery, so the **billed** saving is $0.
+$0.0023 is the list price of storage we were not charged for. We cannot read
+the invoice, so we cannot show a change in a bill, only in bytes.
 
-**When it saves nothing, or goes wrong:**
+**What would tell us we were wrong:**
 
-- **The bill does not move.** BigQuery's first 10 GiB of storage per month is
-  free ([pricing](https://cloud.google.com/bigquery/pricing), read 6 Nov 2026).
-  We hold 0.29 GiB in BigQuery (warehouse and gold), so the billed saving is $0. The $0.0023 is the
-  list price of data we are not charged for.
-- **A document points at one.** `docs/runbooks/slow-query.md` names
-  `order_items_day` and `orders_month`. Dropping the table breaks its commands.
-- **The tuning evidence goes.** The 2.91× and 11.43× figures on the tuning page
-  are re-measurable only while those tables exist, or after a rebuild.
-- **If the data grows 1,000×,** the variants would be 113 GiB and $2.27 per
-  month, and the saving would then be real.
+- **A view or model fails** because it read a dropped table. We checked the
+  three views' queries and the repo, and the three views were queried after the
+  drop. A dbt run would be the other test, and it reads `g04_bronze_1`, not this
+  dataset.
+- **The tuning evidence is gone.** The 2.91× and 11.43× figures on the tuning
+  page are re-measurable only after a rebuild with
+  `warehouse/02_tuned_tables.sql`. The page keeps the numbers and the date.
+- **`docs/runbooks/slow-query.md`** still names `order_items_day` in its
+  comparison table. The row is kept as a dated example and says the table is
+  dropped.
+- **If the data grows 1,000×,** the variants would have been 113 GiB and $2.27
+  per month, and the saving would then have been real.
 
 ### Ledger
 
@@ -259,13 +271,13 @@ GiB-month at 730 hours, but for the regions it lists, which we could not tie to
 |---|---|---|---|---|
 | `gs://data-engineering-i1-g04` | 104,128,706 bytes (0.0970 GiB), Standard | $0.020 / GiB | $0.0019 | yes |
 | `g04_bronze_1` | 0 bytes (28 external tables) | n/a | $0 | yes |
-| `g04_warehouse` | 267,697,890 bytes (0.2493 GiB) | $0.020 / GiB | $0.0050 | yes |
+| `g04_warehouse` | 145,967,988 bytes (0.1359 GiB), read 19 Nov (267,697,890 on 6 Nov) | $0.020 / GiB | $0.0027 | yes |
 | `g04_silver` | 77 bytes (13 views, 1 table) | $0.020 / GiB | $0 | yes |
 | `g04_gold` | 42,265,798 bytes (0.0394 GiB) | $0.020 / GiB | $0.0008 | yes |
 | `gs://data-engineering-i1-g04-tfstate` | about 21 KB live plus versions | $0.020 / GiB | under $0.00001 | by hand |
 | `g04_bronze` (old, to delete) | not readable | n/a | not measured | none |
 | Queries | 1,173,684,313 bytes on 5 Nov, 0 since | $7.50 / TiB, 1 TiB free | $0.0080 list, **$0 billed** | none (jobs) |
-| **Total, storage** | | | **$0.0077** | |
+| **Total, storage** | | | **$0.0054** (was $0.0077 on 6 Nov) | |
 
 Everything is below BigQuery's free storage (10 GiB) and query (1 TiB) tiers,
 so the group's invoice should be $0 for BigQuery. The bucket has no free tier

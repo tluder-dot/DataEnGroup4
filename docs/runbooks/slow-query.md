@@ -89,7 +89,7 @@ GROUP BY table_name ORDER BY partitions DESC;
 |---|---|---|
 | `order_items_month_pc` | 37 | 485,855 bytes |
 | `orders_month` | 37 | 421,238 |
-| `order_items_day` | 1,096 | 16,402 |
+| `order_items_day` (dropped on 19 November, kept here as the example of a grain that is too fine) | 1,096 | 16,402 |
 
 The partition count or the average size has **moved**. A monthly table that
 gains a month each month is normal (38, 39...). A count in the thousands, or an

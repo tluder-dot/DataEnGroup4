@@ -1,0 +1,50 @@
+# Merged by Compose on top of docker-compose.yaml, service by service (the
+# course's L07 lab). Our image, our paths, the alert webhook, and the Docker
+# socket, which lets a task start our images beside Airflow. The names must
+# match the base file exactly.
+#
+# The paths are the HOST's: a task asks the host's Docker to start a
+# container, so every mount it gives is a path on the laptop.
+services:
+  airflow-worker:
+    build: .
+    image: albert-airflow:3.3.2
+    environment:
+      REPO_DIR: ${REPO_DIR}
+      GCLOUD_DIR: ${GCLOUD_DIR}
+      ALERT_WEBHOOK: ${ALERT_WEBHOOK}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  airflow-scheduler:
+    build: .
+    image: albert-airflow:3.3.2
+    environment:
+      REPO_DIR: ${REPO_DIR}
+      GCLOUD_DIR: ${GCLOUD_DIR}
+      ALERT_WEBHOOK: ${ALERT_WEBHOOK}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  airflow-dag-processor:
+    build: .
+    image: albert-airflow:3.3.2
+    environment:
+      REPO_DIR: ${REPO_DIR}
+      GCLOUD_DIR: ${GCLOUD_DIR}
+      ALERT_WEBHOOK: ${ALERT_WEBHOOK}
+  airflow-apiserver:
+    build: .
+    image: albert-airflow:3.3.2
+    environment:
+      REPO_DIR: ${REPO_DIR}
+      GCLOUD_DIR: ${GCLOUD_DIR}
+      ALERT_WEBHOOK: ${ALERT_WEBHOOK}
+  airflow-triggerer:
+    build: .
+    image: albert-airflow:3.3.2
+    environment:
+      REPO_DIR: ${REPO_DIR}
+      GCLOUD_DIR: ${GCLOUD_DIR}
+      ALERT_WEBHOOK: ${ALERT_WEBHOOK}
+  airflow-init:
+    build: .
+    image: albert-airflow:3.3.2
