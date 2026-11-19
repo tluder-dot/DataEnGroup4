@@ -757,10 +757,9 @@ Not in this count: the dead letter queue files `bronze/_dlq/clickstream/`, which
 - **Unclassified columns stay unclassified.** We did not read the text to judge
   it, and profiling stops at counts and lengths. `review_text` and `review_title`
   reach silver unchanged.
-- **`p_desc` contradicts the data dictionary.** We class it `unclassified`; the
-  dictionary marks it "No". Sellers type it freely, so it can hold a name or a
-  phone number. The dictionary's "No" says what the column is meant to hold, not
-  what it holds. `p_name`, a short title, is `internal`.
+- **`p_desc` is `unclassified`, though it looks like product data.** Sellers
+  type it freely, so it can hold a name or a phone number. `p_name`, a short
+  title, is `internal`.
 - **`extra_fields` is not in BigQuery.** The clickstream consumer writes it into
   the Parquet files from 6 November (data dictionary), but `clickstream_external`
   does not expose it, so it is not in the counts above. It would be
