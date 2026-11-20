@@ -6,6 +6,7 @@
 -- 9,085 of 19,138 rows in bronze reused an ID; keying on event_id alone
 -- dropped them.
 -- Casts the timestamps, and qty and order_id, which arrive as FLOAT64.
+-- Drops buyer_id: no model reads it (ADR 0010, data minimisation).
 
 SELECT
     event_id,
@@ -13,7 +14,6 @@ SELECT
     TIMESTAMP(event_time) AS event_time,
     TIMESTAMP(emitted_at) AS emitted_at,
     session_id,
-    buyer_id,
     p_id,
     price,
     CAST(qty AS INT64) AS qty,

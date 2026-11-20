@@ -7,6 +7,7 @@ models:
       - name: order_id
         tests: [unique, not_null]
       - name: buyer_id
+        description: "Salted SHA-256 hash of the buyer ID (pseudonymised, still personal data)."
         tests: [not_null]
       - name: order_date
         tests: [not_null]

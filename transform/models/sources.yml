@@ -87,3 +87,15 @@ sources:
           freshness:
             warn_after: {count: 1, period: day}
             error_after: {count: 5, period: day}
+
+  - name: secrets
+    description: >
+      One row, one column: the salt that pseudonymise() adds to an identifier
+      before hashing it. Not bronze data. Only the dbt runner reads it. Created
+      and filled by transform/seed_pii_salt.py, never by dbt. Its dataset is the
+      variable salt_dataset, g04_secrets by default; a test run points it at a
+      dataset of its own: --vars '{salt_dataset: g04_test_silver}'.
+    database: data-engineering-i1
+    schema: "{{ var('salt_dataset', 'g04_secrets') }}"
+    tables:
+      - name: pii_salt
