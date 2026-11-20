@@ -54,3 +54,69 @@ than a simpler rule. Each figure below says where it comes from.
 | A view per consumer | Yes | No: a view per consumer and table | The view, yes. The tables under it stay open to a project-level role | Yes, silver is already views | In silence, through the tables |
 | A dataset per level | Yes | Partly: a new table goes to the right dataset | The grant, yes. Bypassed by a project-level role | Yes, we split by layer already | In silence, through the project role |
 | Trust people | Yes | Not applicable | No: no record of reads | Yes | In silence |
+
+## Decision
+
+We grant access by the **class of the column**, and apply the rule at the **lowest
+layer that can carry it**: a policy tag where the table is native, a hashed
+identifier where the layer is views, and no identifier at all in gold. The classes
+and the access matrix are the policy; the enforcement is what the platform lets us
+build. Not everything below is in place:
+
+| Element | State |
+|---|---|
+| The seven classes, an owner and a reason for each of the 323 columns | **In place**, merged ([governance](../governance.md)) |
+| The access matrix by role and class, and its 12 gaps | **Proposed**: pull request in review |
+| Gold holds no identifier | **In place**: no `buyer_id` column in gold, checked 19 Nov. Its order lines still carry an `order_id` that leads to a person until gold is rebuilt |
+| The buyer ID hashed in silver, the salt in its own dataset | **Tested, waiting for deployment**: pull request `transform/pii-redaction` is a draft and waits for `g04_secrets`, which `infra/secrets-dataset` declares |
+| Policy tags on the columns of native tables | **Tested on a 3-row copy, not applied to any real table.** The taxonomy was made by hand for the test and is deleted after it. Declaring it in Terraform (`google_data_catalog_taxonomy` and `google_data_catalog_policy_tag`) is **proposed**. Result with a second login: **not obtained: no second login ran the test by 20 Nov 2026. Documented as a gap; the refusal is not shown.** |
+| Narrower grants through Terraform, one `google_bigquery_dataset_iam_member` per grant | **Proposed**: Jane's `dataViewer` to `metadataViewer` on `g04_warehouse`, put to Enzo and Jane on 19 Nov. Jane agreed on 20 Nov; waiting for Enzo. Not applied |
+
+## Consequences
+
+**What becomes easier.** A new column gets a class by rule, and the class says who
+may read it. A reader asks one file which columns are personal and who owns them.
+Silver no longer carries the real buyer ID once the hash is deployed, so the people
+who read silver stop being the people who could find a buyer.
+
+**What becomes harder.** Two levels of grants, a dataset and a tag, have to be
+reasoned about together. `stg_orders` and `stg_customer_shipping` become tables
+instead of views: a view would store the salt in its SQL, or oblige every reader of
+silver to read the salt table. That departs from ADR-0005 for those two models.
+ADR-0005 is accepted and is not rewritten here; its status line should say "partly
+superseded by ADR-0010", which is Till's file, so it is asked in the pull request.
+
+**The rule is stronger on paper than in the platform.** The policy classifies every
+column, but nothing in the platform shows a refusal yet. A tag set on a test column
+did not refuse a read by our login, and a project-level role that we cannot list
+reads tables that the dataset grants do not name. What protects the buyer today is
+what we removed from the data, not what we blocked. The hash, and a gold without an
+identifier, hold wherever a role is wider than it should be.
+
+**Retention.** The runbook leaves this to this ADR. We keep 7 days of soft delete in
+the bucket and 168 h of time travel on the four datasets. The soft delete is the
+only safety net if a rewrite of production files goes wrong, and the first real one
+will have none other. A person erased today stays in the old versions for 7 days,
+and in BigQuery for 168 h plus a fail-safe period that we cannot read. We found no
+way to purge soft-deleted objects early. **Open question: whether that delay is
+acceptable to the person and to the law.** We did not answer it. The trigger: at the
+first real request, the reply says "the copies are deleted within 7 days", and the
+question is put to someone who can answer it.
+
+**What would change our mind.**
+- **A second test, by a login that does not hold `fineGrainedGet`, is not refused
+  either:** the tags enforce nothing here. We drop them, and new sensitive columns
+  go in a dataset of their own (option 3).
+- **The project's IAM policy becomes readable and the broad role is removed:** we
+  repeat the tests and the reduction of Jane's grant, since the dataset grants would
+  then bind.
+- **A consumer needs a shape that no class gives,** for example part of a free-text
+  column: a view for that consumer (option 2) costs less than a new class.
+- **Native tables with a personal column that carry a tag:** 0 of 5 today
+  (`orders_month`, `orders_plain`, `review`, `customer_shipping`, `shipping_details`).
+  If it is still 0 when the platform changes, the enforcement is a claim.
+
+**Not handled.** Free text (`unclassified`), because we cannot tell what it holds.
+The company's database, which restores an erased person every night. The salt, which
+is only as secret as the dataset that holds it. The copies of an erased person that
+survive 7 days.
