@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars, which git ignores, and fill in real logins.
+# They are kept out of the code on purpose: this repository is public.
+
+# Who manages g04_secrets with Terraform.
+secrets_owner = "owner@example.com"
+
+# Who writes the salt (transform/seed_pii_salt.py).
+secrets_writers = ["writer@example.com"]
+
+# Who runs dbt, so reads the salt.
+secrets_readers = ["reader@example.com", "other.reader@example.com"]
