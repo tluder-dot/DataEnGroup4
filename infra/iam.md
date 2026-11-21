@@ -62,7 +62,62 @@ buyer IDs and review text.
 | Till | Owner | Dataset | Created the datasets and runs dbt |
 | Enzo | Owner | Dataset | Manages the datasets with Terraform (L08) |
 | Jane | `roles/bigquery.dataEditor` | Dataset | Airflow rebuilds silver and gold (L07) |
-| Evaluna | `roles/bigquery.dataEditor` | Dataset | Classifies and protects the columns (L10) |
+| Evaluna | `roles/bigquery.dataViewer` | Dataset | Reads silver and gold to count and check (L10). Narrowed from Writer on 20 Nov 2026, see below |
+
+**Evaluna's Writer became Reader on silver and gold** (`roles/bigquery.dataEditor`
+to `roles/bigquery.dataViewer`). `lastModifiedTime` of the datasets: `g04_silver`
+20 November 2026 at 11:49:48 UTC, `g04_gold` at 11:50:05 UTC. Applied by Evaluna
+herself, with the agreement asked of Till, who owns both datasets and had not yet
+answered. She writes nothing there: dbt builds silver and gold, run by Till and by
+Jane's DAG. The Writer role was given for L10 to classify and protect the columns,
+but classifying is a document ([governance](../docs/governance.md)), and a policy
+tag can only go on a native table, which silver (views) is not. A Writer can also
+read `buyer_id` and delete tables; a Reader has what counting and checking need.
+
+**What this did not change, and what it showed.** `testIamPermissions`, read-only:
+
+| When (UTC, 20 Nov 2026) | What the login could do |
+|---|---|
+| 11:00:00, before | `update`, `updateData` and `delete` on tables of `g04_silver`, `g04_gold` and on `g04_warehouse.orders_month`, where the dataset lists no entry for her |
+| 11:44:59, before, with only Writer at dataset level | `datasets.update`, `datasets.setIamPolicy` and `datasets.delete` on `g04_silver` and `g04_gold`. The Writer role does not include them |
+| 11:50:22, after | The same, on the same tables and datasets |
+
+So a project-level role that we cannot list gives more than the dataset says, and
+the narrowing changed the dataset's list, not what the login can do. It also means
+that **any member with that project-level role can change the access of these
+datasets, or delete them, without being their Owner**: Evaluna changed her own
+entry that way. See gap 10 in [governance](../docs/governance.md).
+
+How it was changed, for each of the two datasets:
+
+```
+bq show --format=prettyjson data-engineering-i1:g04_silver > before.json
+python swap_own_grant.py before.json after.json <evaluna>@albertschool.com
+bq update --source after.json data-engineering-i1:g04_silver
+bq show --format=prettyjson data-engineering-i1:g04_silver     # READER for her, no WRITER
+```
+
+`swap_own_grant.py` replaces that login's WRITER entry by a READER entry, and
+refuses to write if it does not find exactly one such entry or if anything else
+would change:
+
+```python
+import json, sys
+src, dst, who = sys.argv[1:4]
+j = json.load(open(src, encoding="utf-8-sig"))
+before = j["access"]
+old = {"role": "WRITER", "userByEmail": who}
+new = {"role": "READER", "userByEmail": who}
+if before.count(old) != 1 or new in before:
+    sys.exit("REFUSED: not exactly one WRITER entry for that login, or a READER entry already exists")
+others = [a for a in before if a != old]
+after = others + [new]
+key = lambda a: json.dumps(a, sort_keys=True)
+if len(after) != len(before) or sorted(map(key, others)) != sorted(map(key, [a for a in after if a != new])):
+    sys.exit("REFUSED: something else would change")
+j["access"] = after
+json.dump(j, open(dst, "w", encoding="ascii"), indent=2)
+```
 
 ## Dataset `g04_warehouse`
 
