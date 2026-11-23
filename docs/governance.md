@@ -885,13 +885,13 @@ role granted at project level is invisible here.
 | 1 | Anyone with Viewer on the project reads all the bronze files | Only the roles that need bronze | `projectViewer` reads contacts, addresses and free text | Yes, on the bucket. Risk: our own reads of the external tables may depend on it (see note) |
 | 2 | Anyone with Viewer reads the Terraform state | Enzo and Till only | The state holds the dataset access lists, so the members' email addresses | Yes, on the bucket. Risk: Terraform may stop if our own access relies on it |
 | 3 | Jane can read the rows of `g04_warehouse` | Metadata only: the pipeline does not read it | No file under `orchestration/` or `transform/` reads it. Her jobs there, 6 to 19 November, only read metadata (see "What the audit showed") | Yes: narrow her role to metadata viewer, with Enzo's agreement and through Terraform (gap 12) |
-| 4 | Evaluna is Writer on silver and gold | `count` only | She can read `buyer_id` and write in silver and gold | Yes: Writer to Reader. Risk: tagging columns will need rights on the source tables |
+| 4 | Evaluna is Writer on silver and gold | `count` only | She can read `buyer_id` and write in silver and gold | Done on 2026-11-20 (reduction C): Writer to Reader in the dataset lists. Her login still writes, through the project-level role (gap 10) |
 | 5 | Till is Owner of `g04_bronze_1`, silver and gold | Editor is enough | Owner can change the access list and delete the dataset | Yes, with Till's agreement. Enzo's Owner is needed for Terraform |
 | 6 | Enzo is Owner of bronze, silver and gold | `pii.contact`: no | An Owner reads every column | Not until columns carry policy tags |
 | 7 | Jane and Evaluna read all of `g04_bronze_1` | Jane: no `pii.contact`. Evaluna: `count` | A dataset Reader reads every column | Not until columns carry policy tags |
 | 8 | There is no service account | An orchestrator with limited rights | The orchestrator runs with the login of the person who starts it, so with all of that person's rights | No: groups cannot create one |
 | 9 | `projectOwners` is Owner everywhere | | Default, kept: the course's owners | Accepted |
-| 10 | A project-level role is wider than the dataset grants, and invisible | Access follows the dataset grants | `testIamPermissions` on 19 November 2026 shows Evaluna's login holds `bigquery.tables.getData` on `g04_warehouse.orders_month`, where the dataset lists her nothing, so a project-level role gives it. We cannot list that role or say who else holds it | No: `resourcemanager.projects.getIamPolicy` is denied |
+| 10 | A project-level role is wider than the dataset grants, and invisible | Access follows the dataset grants | `testIamPermissions` on 19 November 2026 shows Evaluna's login holds `bigquery.tables.getData` on `g04_warehouse.orders_month`, where the dataset lists her nothing, so a project-level role gives it. We cannot list that role or say who else holds it **On 20 November 2026 at 11:44:59 UTC, with only Writer at dataset level, the same login had `datasets.update`, `datasets.setIamPolicy` and `datasets.delete` on `g04_silver` and `g04_gold`:** any member with that project-level role can change the access of these datasets, or delete them, without being their Owner. Evaluna changed her own entry that way (reduction C). | No: `resourcemanager.projects.getIamPolicy` is denied |
 | 11 | No analyst exists | Reader on gold only | The Analyst row cannot be tested against anyone | No |
 | 12 | Terraform does not manage any access | Access changes go through `plan` | `infra/terraform/` declares no `access` block and no IAM resource: it owns the containers, not who may read them | Yes: one `google_bigquery_dataset_iam_member` per grant, not a full `access` list (one dataset first) |
 
@@ -931,6 +931,85 @@ and it does not say who would need access in the future.
 
 | Reduction | For | Risk | State |
 |---|---|---|---|
-| **B.** Jane on `g04_warehouse`: `roles/bigquery.dataViewer` to `roles/bigquery.metadataViewer` | Her 8 jobs there, 6 to 19 November 2026, only read metadata (`INFORMATION_SCHEMA`, `__TABLES__`) and the pipeline never reads the dataset. She keeps the lists of tables and columns and can no longer read rows, `buyer_id` included | No pipeline job breaks. Not verified: `__TABLES__` must still work with the metadata role, to be tested by Jane after the change. If Jane holds the same project-level role as Evaluna (gap 10), narrowing her dataset grant changes nothing: test it by reading a row as Jane after the change | Proposed to Enzo (code owner) and Jane (grant holder) on 2026-11-19; not applied. Access is not in Terraform (gap 12): two steps, add the metadata role, then remove the data role, in a separate pull request after their agreement |
+| **B.** Jane on `g04_warehouse`: `roles/bigquery.dataViewer` to `roles/bigquery.metadataViewer` | Her 8 jobs there, 6 to 19 November 2026, only read metadata (`INFORMATION_SCHEMA`, `__TABLES__`) and the pipeline never reads the dataset. She keeps the lists of tables and columns and can no longer read rows, `buyer_id` included | No pipeline job breaks. Not verified: `__TABLES__` must still work with the metadata role, to be tested by Jane after the change. If Jane holds the same project-level role as Evaluna (gap 10), narrowing her dataset grant changes nothing: test it by reading a row as Jane after the change | Proposed to Enzo (code owner) and Jane (grant holder) on 2026-11-19. Jane agreed on 2026-11-20; waiting for Enzo. Not applied. Access is not in Terraform (gap 12): two steps, add the metadata role, then remove the data role, in a separate pull request after their agreement |
 | **A.** Remove `projectViewer` from `g04-tfstate` | The state holds the members' email addresses | Terraform stops if the person running it relied on that binding; give Enzo and Till named access first | Not done. The bucket was made by hand, outside Terraform |
-| **C.** Evaluna: Writer to Reader on silver and gold | Governance needs counts, not writes | Setting a policy tag needs rights on the source table | Not done: wait for the enforcement work |
+| **C.** Evaluna: Writer to Reader on silver and gold | Governance needs counts, not writes | Setting a policy tag needs rights on the source table. **It changes the list of the datasets, not what her login can do**: the same `testIamPermissions` before (11:00:00 and 11:44:59 UTC) and after (11:50:22 UTC) gives `update`, `updateData` and `delete` on tables, and `datasets.update`, `setIamPolicy` and `delete` on both datasets | **Applied by Evaluna on 2026-11-20** (`g04_silver` 11:49:48 UTC, `g04_gold` 11:50:05 UTC, `lastModifiedTime`), with the agreement asked of Till, the owner, who had not answered. Details in [iam](../infra/iam.md) |
+
+## Enforcement: what was tested
+
+The brief asks for at least two columns classified and enforced, and enforcement
+verified by being refused. This section says what was tested and what was shown.
+Why access follows the class of a column is in
+[ADR-0010](adr/0010-data-classification.md).
+
+**Result in one line: a tag was set on one test column, and the read was not refused.
+No real table carries a tag, and the refusal is not shown.**
+
+### The test
+
+On 20 November 2026, on a table of 3 synthetic rows, never on a real table. Times
+are UTC, read from BigQuery's clock.
+
+| Step | Result | Time |
+|---|---|---|
+| Create the taxonomy `g04-classification` (`europe-west1`, fine-grained access control on) | HTTP 200 | 09:34:13 |
+| Create 5 tags: `pii`, with `location`, `identifier` and `contact` under it, and `unclassified` | HTTP 200 for the five. Short names are accepted | 09:38:33 to 09:38:34 |
+| Create the dataset `g04_test_tags` and the table `orders_sample` (3 synthetic rows) | Created, default groups removed | 09:39:02, 09:39:19 |
+| Set the tag `pii/identifier` on `buyer_id` | "successfully updated". `bq show --schema` shows the tag on `buyer_id` and on no other column | 09:39:27 |
+| `SELECT buyer_id`, the tagged column | **3 rows, no error** | 09:39:39 |
+| `SELECT order_id, order_date`, untagged columns | 3 rows | 09:39:46 |
+| `SELECT buyer_id` again, 10 minutes after the tag | **3 rows, no error** | 09:50:06 |
+
+Read at 09:40:07: the taxonomy has `FINE_GRAINED_ACCESS_CONTROL` on, and the IAM
+policy of the tag is empty: nobody was granted the Fine-Grained Reader role on it.
+
+### Not refused
+
+The likeliest reason is that this login holds `datacatalog.categories.fineGrainedGet`
+at project level (`testIamPermissions`, 19 November 2026), through a role that we
+cannot list (gap 10). That is a hypothesis. It would be shown by a login that does
+not hold the permission, and none ran the test. Jane was added as a reader of the
+test dataset on 20 November at 09:46:37 and asked to run `SELECT buyer_id`:
+**no second login ran the test by 20 November 2026. Documented as a gap; the
+refusal is not shown.**
+
+What this leaves of the brief's three requirements:
+
+| Requirement | State |
+|---|---|
+| Every column has a class and an owner | Done (this page) |
+| At least two columns classified through a taxonomy and policy tags | The mechanism works: a taxonomy, a hierarchy of tags, and a tag set on a column. **Not done on any real table** |
+| Enforcement verified by being refused | **Not shown** |
+
+### Also found
+
+- **A taxonomy has no labels.** The group's label convention
+  ([costs](costs.md)) does not apply to it, and it was created by hand, so it is
+  outside Terraform.
+- **A tag cannot go everywhere.** BigQuery supports column-level access control for
+  "BigLake tables, BigQuery tables, and BigQuery Omni tables" (documentation, read
+  19 November 2026). Bronze is plain external tables and silver is views, so only
+  the native tables of `g04_warehouse` can carry a tag.
+- **`orders_month` is the one table that could be tagged first.** No materialised
+  view reads it, and only 4 query jobs touched it in 30 days, all Enzo's, the last on
+  5 November (`INFORMATION_SCHEMA`, 20 November). Tagging a table of `g04_warehouse`
+  changes Enzo's table and takes effect for everyone at once, so it needs his
+  agreement.
+- **A rebuild erases the tag.** `warehouse/02_tuned_tables.sql`, line 37, runs
+  `CREATE OR REPLACE TABLE` on `orders_month`: after it the tag is gone.
+- **Not these tables.** `daily_demand_country_mv` reads `orders_plain`,
+  `customer_shipping`, `shipping_details` and `order_items_month_pc`.
+
+### Cleaned up
+
+The test left nothing in the project. On 20 November 2026:
+
+| Step | Time |
+|---|---|
+| Jane's read access removed from `g04_test_tags`; `bq show` lists only `projectOwners` and the owner's login | 10:51:00 to 10:51:14 |
+| Dataset `g04_test_tags` and its table deleted | 10:51:24 to 10:51:31 |
+| Taxonomy `g04-classification` deleted (HTTP 200). Its tags went with it: the one checked answers 404 | 10:51:34 to 10:51:36 |
+| Checked: `bq ls` lists `g04_bronze_1`, `g04_gold`, `g04_silver` and `g04_warehouse` only; the taxonomy and one of its tags answer 404; the 4 taxonomies of other groups are untouched | 10:51:50 |
+
+The proposal for what comes next, a taxonomy declared in Terraform with
+`google_data_catalog_taxonomy` and `google_data_catalog_policy_tag`, is in the ADR.
