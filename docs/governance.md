@@ -942,8 +942,9 @@ verified by being refused. This section says what was tested and what was shown.
 Why access follows the class of a column is in
 [ADR-0010](adr/0010-data-classification.md).
 
-**Result in one line: a tag was set on one test column, and the read was not refused.
-No real table carries a tag, and the refusal is not shown.**
+**Result in one line: a tag was set on a test column, and the read was not refused,
+neither for Evaluna (20 November) nor for Till (23 November). No real table carries
+a tag, and the refusal is not shown.**
 
 ### The test
 
@@ -979,7 +980,31 @@ What this leaves of the brief's three requirements:
 |---|---|
 | Every column has a class and an owner | Done (this page) |
 | At least two columns classified through a taxonomy and policy tags | The mechanism works: a taxonomy, a hierarchy of tags, and a tag set on a column. **Not done on any real table** |
-| Enforcement verified by being refused | **Not shown** |
+| Enforcement verified by being refused | **Not shown**, by two logins (see below) |
+
+### Second login, 23 November 2026
+
+Till ran the same test with his own login, with
+[`infra/governance/policy_tag_test.py`](../infra/governance/policy_tag_test.py):
+a new taxonomy, one tag and a table of 3 synthetic rows, deleted afterwards. Times
+are UTC, read from BigQuery's clock.
+
+| Step | Result | Time |
+|---|---|---|
+| Create the taxonomy `g04-classification` (`europe-west1`, fine-grained access control on) and the tag `pii-identifier` | Created | 09:03:16, 09:03:18 |
+| Create the dataset `g04_test_tags` and the table `orders_sample` (3 synthetic rows) | Created | 09:03:23 |
+| Set the tag on `buyer_id` | Only `buyer_id` is tagged. The tag's IAM policy is empty | 09:03:25 |
+| `SELECT buyer_id`, the tagged column | **3 rows, no error** | 09:03:28 |
+| `SELECT order_id, order_date`, untagged columns | 3 rows | 09:03:29 |
+| Delete the dataset, then the taxonomy with its tag | The four `g04` datasets are left, and no `g04` taxonomy | 09:04:26, 09:04:27 |
+
+So two of our four logins read a column whose tag grants nobody. Jane's and
+Enzo's were not tested. The read came 3 seconds after the tag was set, but
+Evaluna's second read, 10 minutes after, was not refused either, so a delay in
+applying the tag is an unlikely reason. Which role lets Till through is not known:
+from his login, `testIamPermissions` on the project answers that the Cloud Resource
+Manager API is disabled in the project. **The refusal is still not shown; it stays
+a gap.**
 
 ### Also found
 
