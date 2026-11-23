@@ -878,6 +878,29 @@ versioning, `g04-tfstate` has it on and blocks public access. The project's own
 IAM policy cannot be read (`gcloud projects get-iam-policy` is refused), so a
 role granted at project level is invisible here.
 
+**Changes since 19 November.**
+
+- **20 November:** Evaluna's role on `g04_silver` and `g04_gold` became Reader
+  (`lastModifiedTime` 11:49:48 and 11:50:05 UTC). Her login can still do what it
+  did (gap 10, [iam](../infra/iam.md)).
+- **23 November:** the dataset `g04_secrets` exists. Enzo created it with Terraform
+  at 13:27:29 UTC (`infra/secrets-dataset`), with a complete access list and no
+  default groups:
+
+| Resource | Principal | Role |
+|---|---|---|
+| `g04_secrets` | `projectOwners`, Enzo | Owner |
+| `g04_secrets` | Evaluna | Writer |
+| `g04_secrets` | Jane, Till | Reader |
+
+  The table `pii_salt` was created at 14:02:29 UTC: one row, one column `salt`, 64
+  hex characters, read back by length and shape only. The dataset carries the
+  group's four labels. **The table had none when it was created**; the same four were
+  added on 23 November at 14:10:06 UTC (`bq update --set_label`) and `bq show` lists
+  them. As with the other datasets, a
+  project-level role that we cannot list (gap 10) probably reads it too. That is not
+  tested, because this login is listed on the dataset.
+
 ### Gaps between the matrix and the platform
 
 | # | Gap | The matrix says | Reality | Can we close it? |
