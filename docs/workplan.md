@@ -55,32 +55,19 @@ own extractor, with full batch as its main mode.
 - **Step 10:** creating policy tags may be refused. The brief asks for gaps to be
   written down.
 
-## Still open from steps 2 to 4
+## Open items from steps 2 to 4: all closed
 
-Nothing waits for these, but the repository is graded on them.
+Checked on 23 November 2026.
 
-**Jane**
-- **Consumer fixes:**
-  - The same columns and types in every file, as declared in
-    `ingestion/clickstream_external.sql`. Today a batch without an order has no
-    `order_id`, and a batch of only cart events writes `qty` as an integer.
-  - Bigger files: not one file per quiet second. Files of 1 to 11 rows were
-    seen on 5 November.
-  - In the dead letter queue, `rejected_at` instead of `event_time`, which
-    holds the time of the rejection.
-
-**Enzo**
-- Confirm ADR 0004, then set it to accepted.
-- Take `projectReaders` and `projectWriters` off `g04_warehouse`, as on
-  `g04_bronze_1`: anyone with Viewer on the project can read it today.
-
-**Evaluna**
-- Delete the old dataset `g04_bronze`: the dataset only. The bucket and its
-  files stay.
-- Write your role in the README team table.
-
-**Till**
-- Delete the old merged branches on GitHub. New ones delete themselves.
+- **Jane:** the consumer writes the same columns and types in every file, files
+  of up to 200 rows or every 15 minutes, and `rejected_at` in the dead letter
+  queue (#39, 6 November).
+- **Enzo:** ADR 0004 is accepted. `g04_warehouse` no longer grants the
+  project's readers and writers.
+- **Evaluna:** the old `g04_bronze` dataset is deleted, and her role is in the
+  README.
+- **Till:** the old merged branches are deleted (8 November). His dev datasets
+  `l05_tl_silver` and `l05_tl_gold` are deleted too (23 November).
 
 ## Not in this plan
 
