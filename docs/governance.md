@@ -1061,3 +1061,25 @@ The test left nothing in the project. On 20 November 2026:
 
 The proposal for what comes next, a taxonomy declared in Terraform with
 `google_data_catalog_taxonomy` and `google_data_catalog_policy_tag`, is in the ADR.
+
+## Step 10 summary: where the hardening lives
+
+The brief asks for the platform hardened in `infra/terraform/`. Of everything that
+narrows a right or protects a column, this is where each piece stands, on 23 November
+2026. Only the first line is in Terraform.
+
+| Piece | Where it lives | State |
+|---|---|---|
+| The dataset `g04_secrets` with a **complete access list**: `projectOwners` and Enzo Owner, Evaluna Writer, Jane and Till Reader, no `projectReaders` or `projectWriters`, and the group's labels | `infra/terraform/secrets.tf` (#63) | **Applied** by Enzo on 23 Nov at 13:27:29 UTC (`bq show`, 13:58 UTC). The only dataset whose access list Terraform declares |
+| Evaluna's Writer to Reader on `g04_silver` and `g04_gold` | `bq update`, written up in [iam](../infra/iam.md) | Applied 20 Nov (11:49:48 and 11:50:05 UTC). **Not in Terraform**: it changes the list of the datasets, not what her login can do (gap 10) |
+| Jane's `dataViewer` to `metadataViewer` on `g04_warehouse` | Nowhere | **Not applied, on purpose** (#69): worth doing only if a read as Jane is refused after the change |
+| Policy tags on columns | The ADR proposes `google_data_catalog_taxonomy` and `google_data_catalog_policy_tag` | **Not on any real table.** Tested on a copy twice, never refused ([Enforcement](#enforcement-what-was-tested)) |
+| `projectViewer` off the state bucket | Nowhere | Not done (reduction A) |
+| The labels of the table `pii_salt` | `bq update --set_label`, on 23 Nov at 14:10:06 UTC | **Not in Terraform**: a script creates the table, not Terraform |
+| The hashed buyer ID in silver | dbt, in `transform/`, not Terraform | Tested, waiting for deployment: #58 is a draft and the DAG needs a new image tag |
+
+**What this means.** The reductions of rights on the other datasets are outside
+Terraform (gap 12): `infra/terraform/` declares labels and no access list for
+`g04_bronze_1`, `g04_silver`, `g04_gold` and `g04_warehouse`, so a change of access
+made with `bq update`, as for reduction C, leaves no trace in a plan. The deliverable's
+hardening that does live in Terraform is the dataset that holds the salt.
