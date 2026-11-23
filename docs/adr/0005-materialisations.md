@@ -1,6 +1,7 @@
 # ADR-0005: Build silver as views and gold as tables
 
-- **Status:** accepted
+- **Status:** accepted, partly superseded by [ADR-0010](0010-data-classification.md):
+  `stg_orders` and `stg_customer_shipping` become tables
 - **Date:** 2026-11-06
 - **Author:** Till Lüder
 - **Lesson:** L05
