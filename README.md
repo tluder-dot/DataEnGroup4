@@ -12,6 +12,10 @@ the end of the course it holds the platform your group defends orally:
 - infrastructure as code
 - cost controls and a security baseline
 
+## Video
+
+The platform running end to end, recorded on 23 November 2026 (11 minutes, unlisted): https://youtu.be/BaO2FiZd2Ho
+
 ## Team
 
 | Name | GitHub | Role |
