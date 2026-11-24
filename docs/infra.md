@@ -18,6 +18,7 @@ lives: [ADR 0008](adr/0008-remote-state.md).
 | `g04_warehouse` | Native tables and materialised views of step 4 | Created by hand. **Adopted** |
 | `gs://data-engineering-i1-g04-tfstate` | Holds the Terraform state, versioned | **By hand, on purpose, and not in Terraform** (see below) |
 | `g04_bronze` | The first bronze dataset, replaced by `g04_bronze_1` | By hand. **Not adopted**: Evaluna deletes it, so declaring it would only add something to delete |
+| `g04_secrets` | The salt of the buyer ID hash (step 10), kept away from the data it protects | No: declared in `secrets.tf` and created by Terraform on 23 Nov 2026 |
 | L2 service account | Would run the pipeline without a personal login | **Does not exist.** Not handled, see [Gaps](#gaps) |
 
 The tables and views inside the datasets are not in Terraform. They are built
@@ -125,6 +126,48 @@ the labels the code declares, so an extra label outside the code is invisible.
 (This plan output was not saved; the label was removed again at 14:40 UTC.) The
 same will apply to the labels of step 9 ([costs](costs.md)): a label added by
 hand is not detected, a declared label changed by hand is.
+
+## Running Terraform from a laptop
+
+Two things a plan needs that the code does not say. Checked on 24 Nov 2026,
+Terraform 1.17.1.
+
+**1. The quota project.** Without it, `terraform plan` fails before it plans:
+
+```
+Error: Failed to open state file at gs://data-engineering-i1-g04-tfstate/platform/default.tfstate:
+googleapi: got HTTP response code 403 ... UserProjectAccountProblem
+User project billing account not in good standing.
+The billing account for the owning project is disabled in state absent
+```
+
+The login's default quota project (the one `gcloud auth application-default login`
+stored, `agentics-workflows-510809` on Enzo's laptop) has no billing account, and
+the GCS backend charges it for reading the state. Name the course project instead:
+
+```
+export GOOGLE_CLOUD_QUOTA_PROJECT=data-engineering-i1
+terraform plan
+```
+
+With it set, the same plan prints "No changes". Without it, the same command
+fails (both run on 24 Nov 2026, 10:30 UTC). `GOOGLE_BILLING_PROJECT` did not help
+on 23 Nov; the Python Storage client reads the same state without it, so the fault
+is in how Terraform picks the project, not in our access. We did not look for the
+root cause.
+
+**2. `terraform.tfvars`.** [`secrets.tf`](../infra/terraform/secrets.tf) has three
+variables with no default, because the repository is public and the logins are
+personal data: `secrets_owner`, `secrets_writers` and `secrets_readers`. Copy
+[`terraform.tfvars.example`](../infra/terraform/terraform.tfvars.example) to
+`terraform.tfvars` (git ignores it) and fill in real logins. Without the file,
+`plan` asks for each one.
+
+The dataset `g04_secrets` was created on 23 Nov 2026, 13:27 UTC (1 added,
+0 changed, 0 destroyed), with `projectReaders` and `projectWriters` absent. It
+holds only the salt of the buyer ID hash. Its access list is declared in full,
+so Terraform owns every entry: an entry added by hand is removed by the next
+apply.
 
 ## CI
 
