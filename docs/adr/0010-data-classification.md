@@ -20,7 +20,7 @@ than a simpler rule. Each figure below says where it comes from.
 | Where an identifier sits | `buyer_id` in 7 silver views. An identifier column in 5 native tables of the warehouse. In no gold column | [governance](../governance.md), 19 Nov |
 | What can carry a policy tag | "BigQuery only supports column-level access control for BigLake tables, BigQuery tables, and BigQuery Omni tables." Our bronze tables are 35 plain external tables, and silver is 13 views and 1 table ([ADR-0005](0005-materialisations.md)) | BigQuery documentation, read 19 Nov; `INFORMATION_SCHEMA`, 19 Nov |
 | A tag on a test column | Taxonomy and 5 tags created 20 Nov at 09:34 and 09:38 UTC. A tag set on `buyer_id` of a 3-row synthetic table at 09:39:27. Reading that column at 09:39:39 and at 09:50:06 returned the 3 rows. The tag's IAM policy is empty and the taxonomy enforces fine-grained access | Tests of 20 Nov 2026 |
-| Result of the test by a second login | **Not obtained: no second login ran the test by 20 Nov 2026. Documented as a gap; the refusal is not shown.** | Test of 20 Nov 2026 |
+| Result of the test by a second login | **Not refused.** Till ran the same test with his own login on 23 Nov 2026: the read of the tagged column returned 3 rows, 3 seconds after the tag, and the tag's IAM policy was empty. Two of our four logins read a column that nobody is granted; Jane's and Enzo's were not tested. We do not know which role lets him through, so the refusal is still not shown | [governance](../governance.md) and `infra/governance/policy_tag_test.py`, 23 Nov 2026 |
 | What our logins hold | `bigquery.tables.getData` on `g04_warehouse.orders_month`, where the dataset lists no grant for this login. `datacatalog.categories.fineGrainedGet` at project level. The project's IAM policy is refused | `testIamPermissions`, 19 Nov |
 | Who can tell who read what | The `data_access` log has no BigQuery entry over 30 days. `INFORMATION_SCHEMA.JOBS_BY_PROJECT` can be read | Cloud Logging and BigQuery, 19 Nov |
 | A hashed buyer ID in silver | On a test target: `PASS=81 WARN=3 ERROR=0`; gold gives 115,175 orders and EUR 20,261,896.25, the production figures to the cent; 0 of 100,046 hashed IDs equal a real one | [pseudonymisation test](../evidence/pii-redaction-test.md), 19 Nov |
@@ -68,9 +68,10 @@ build. Not everything below is in place:
 | The seven classes, an owner and a reason for each of the 323 columns | **In place**, merged ([governance](../governance.md)) |
 | The access matrix by role and class, and its 12 gaps | **Proposed**: pull request in review |
 | Gold holds no identifier | **In place**: no `buyer_id` column in gold, checked 19 Nov. Its order lines still carry an `order_id` that leads to a person until gold is rebuilt |
-| The buyer ID hashed in silver, the salt in its own dataset | **Tested, waiting for deployment**: pull request `transform/pii-redaction` is a draft and waits for `g04_secrets`, which `infra/secrets-dataset` declares (proposed, waiting for Enzo). Deploying it also takes a new tag of the transform image in Jane's DAG: until then the nightly run rebuilds silver from the old image, without the hash. And the new tag must not be set before the salt is in `g04_secrets`, or the macro stops the build |
-| Policy tags on the columns of native tables | **Tested on a 3-row copy, not applied to any real table.** The taxonomy was made by hand for the test and is deleted after it. Declaring it in Terraform (`google_data_catalog_taxonomy` and `google_data_catalog_policy_tag`) is **proposed**. Result with a second login: **not obtained: no second login ran the test by 20 Nov 2026. Documented as a gap; the refusal is not shown.** |
-| Narrower grants through Terraform, one `google_bigquery_dataset_iam_member` per grant | **Proposed**: Jane's `dataViewer` to `metadataViewer` on `g04_warehouse`, put to Enzo and Jane on 19 Nov. Jane agreed on 20 Nov; waiting for Enzo. Not applied |
+| The buyer ID hashed in silver, the salt in its own dataset | **Tested, waiting for deployment.** `g04_secrets` exists: Enzo created it with Terraform on 23 Nov 2026 at 13:27 UTC, from `infra/secrets-dataset`. The salt was written on 23 Nov at 14:02 UTC: one row of 64 hex characters, its value shown nowhere. The pull request `transform/pii-redaction` is still a draft. Deploying it takes a new tag of the transform image in Jane's DAG: until then the nightly run rebuilds silver from the old image, without the hash. The salt is in place, so the new tag can be set |
+| Policy tags on the columns of native tables | **Tested on a 3-row copy, not applied to any real table.** The taxonomy was made by hand for the test and is deleted after it. Declaring it in Terraform (`google_data_catalog_taxonomy` and `google_data_catalog_policy_tag`) is **proposed**. Result with a second login: **not refused** (Till, 23 Nov 2026). The refusal is still not shown, and stays a gap. |
+| Narrower grants through Terraform, one `google_bigquery_dataset_iam_member` per grant | **Proposed**: Jane's `dataViewer` to `metadataViewer` on `g04_warehouse`, put to Enzo and Jane on 19 Nov. Jane agreed on 20 Nov. **Not applied on purpose, pending a test by Jane** (#69, Enzo, 23 Nov): it is worth applying only if a read of `g04_warehouse` as Jane is refused after the change; if she can still read, it is cosmetic, because a project-level role that we cannot list gives the same rows (gap 10) |
+| Evaluna's Writer to Reader on `g04_silver` and `g04_gold` | **In place**, applied by `bq update` and not by Terraform, on 20 Nov 2026 (11:49:48 and 11:50:05 UTC). It narrows the lists of the datasets, not what her login can do: a project-level role gave the same permissions before and after (gap 10) |
 
 ## Consequences
 
@@ -92,6 +93,15 @@ did not refuse a read by our login, and a project-level role that we cannot list
 reads tables that the dataset grants do not name. What protects the buyer today is
 what we removed from the data, not what we blocked. The hash, and a gold without an
 identifier, hold wherever a role is wider than it should be.
+
+**The salt lives in one place.** It is the table `g04_secrets.pii_salt`: it was
+generated in memory and written nowhere else, so it cannot leak from a file. The cost
+is that if it is lost or replaced, every hash changes at the next build, and nobody can
+compute the old ones again. Silver stays consistent, because it is rebuilt in full every
+night and both hashed tables use the salt of the same run. An erasure starts from the
+real identifier, found in bronze, so it does not depend on the salt; only the check of
+the hashed silver does, with the salt of the day. The script that writes the salt
+refuses to replace an existing one without `--rotate`.
 
 **Retention.** The runbook leaves this to this ADR. We keep 7 days of soft delete in
 the bucket and 168 h of time travel on the four datasets. The soft delete is the
