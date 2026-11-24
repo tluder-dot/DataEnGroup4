@@ -170,18 +170,21 @@ flowchart LR
 
 ## Decisions
 
-| ADR | Decision | Status |
-|---|---|---|
-| [0001](adr/0001-target-architecture.md) | Two-tier: raw Parquet in Cloud Storage, silver and gold in BigQuery, built with dbt | Accepted |
-| [0002](adr/0002-bronze-layout.md) | Bronze as snappy Parquet, one folder per table, `orders` by year; the three secret columns are never read | Accepted |
-| [0003](adr/0003-ingestion-modes.md) | Database tables in full batch, with an incremental cursor as a second mode; the clickstream as a stream, at least once | Accepted |
-| [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Accepted |
-| [0005](adr/0005-materialisations.md) | Silver as views, gold as tables rebuilt in full | Accepted, partly superseded by 0010 |
-| [0006](adr/0006-image-registry-and-tags.md) | Images on Docker Hub, tagged by date and commit, for amd64 and arm64 | Accepted |
-| [0007](adr/0007-idempotency.md) | Every task safe to rerun: it replaces what it writes, never appends | Accepted |
-| [0008](adr/0008-remote-state.md) | Terraform state in a versioned bucket made by hand | Accepted |
-| [0009](adr/0009-cost-attribution.md) | Cost attributed with four resource labels | Accepted |
-| [0010](adr/0010-data-classification.md) | Access granted by data class, enforced at the lowest layer that can carry it | Accepted |
+Every decision has one member who defends it, agreed by the group on 24
+November 2026. At the defence any of us can be asked about any of them.
+
+| ADR | Decision | Status | Defended by |
+|---|---|---|---|
+| [0001](adr/0001-target-architecture.md) | Two-tier: raw Parquet in Cloud Storage, silver and gold in BigQuery, built with dbt | Accepted | Till |
+| [0002](adr/0002-bronze-layout.md) | Bronze as snappy Parquet, one folder per table, `orders` by year; the three secret columns are never read | Accepted | Evaluna |
+| [0003](adr/0003-ingestion-modes.md) | Database tables in full batch, with an incremental cursor as a second mode; the clickstream as a stream, at least once | Accepted | Jane |
+| [0004](adr/0004-warehouse-pricing.md) | BigQuery on demand, with a 100 MiB cap on every query | Accepted | Enzo |
+| [0005](adr/0005-materialisations.md) | Silver as views, gold as tables rebuilt in full | Accepted, partly superseded by 0010 | Till |
+| [0006](adr/0006-image-registry-and-tags.md) | Images on Docker Hub, tagged by date and commit, for amd64 and arm64 | Accepted | Jane |
+| [0007](adr/0007-idempotency.md) | Every task safe to rerun: it replaces what it writes, never appends | Accepted | Jane |
+| [0008](adr/0008-remote-state.md) | Terraform state in a versioned bucket made by hand | Accepted | Enzo |
+| [0009](adr/0009-cost-attribution.md) | Cost attributed with four resource labels | Accepted | Enzo |
+| [0010](adr/0010-data-classification.md) | Access granted by data class, enforced at the lowest layer that can carry it | Accepted | Evaluna |
 
 ## Change log
 
