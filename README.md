@@ -1,16 +1,28 @@
-# Albert's Marketplace data platform: group repo
+# Albert's Marketplace data platform: Group 4
 
-This repository is your group's data platform for **Albert's Marketplace**, the
-fictional European beauty marketplace of the Data Engineering & Cloud
+The data platform of **Albert's Marketplace**, a fictional European online shop
+for beauty products. Built by Group 4 for the Data Engineering & Cloud
 Infrastructure course (MSA-DAT09-02, Albert School).
 
-It starts almost empty. Every lesson adds a layer on top of the previous one. By
-the end of the course it holds the platform your group defends orally:
-- ingestion
-- a bronze, silver and gold warehouse
-- containerised jobs and orchestration
-- infrastructure as code
-- cost controls and a security baseline
+**What it does.** Every night at 02:00 UTC, Airflow (in Docker, on one member's
+laptop) copies seven tables of the shop's PostgreSQL database into Cloud
+Storage as Parquet: orders, order lines, products, reviews and addresses. That
+is bronze. A consumer that is always on adds the shop's click events from
+Kafka. dbt then builds silver (clean, typed, tested) and gold (a star schema)
+in BigQuery, and a failed test stops the run before gold changes. Passwords
+and card numbers never leave the shop.
+
+**Who it is for.** The company's analysts and revenue reports, who get one
+revenue figure in SQL, and its ML team, who get units sold per product, country
+and day. Both read gold, never bronze or silver.
+
+**Start here:**
+- [docs/architecture.md](docs/architecture.md): the diagram, what runs today,
+  what is not done yet, and the ten decisions
+- [docs/orchestration.md](docs/orchestration.md): how to run the whole
+  pipeline with Airflow
+- [Run the jobs on a new machine](#run-the-jobs-on-a-new-machine), below: one
+  job at a time
 
 ## Video
 
@@ -20,7 +32,7 @@ The platform running end to end, recorded on 23 November 2026 (11 minutes, unlis
 
 | Name | GitHub | Role |
 |---|---|---|
-| Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | Coordination and setup; bronze (step 2), the extractor, data dictionary, architecture |
+| Till Lüder | [@tluder-dot](https://github.com/tluder-dot) | Coordination and setup. Step 2: bronze, the data dictionary, ADRs 0001 and 0002. The extractor. Step 5: dbt silver and gold, ADR 0005. The architecture page, every step |
 | Evaluna Barth | [@evalunab](https://github.com/evalunab) | Step 10: governance (data classification, access, PII protection, erasure runbook, ADR 0010). Step 11: coordinates the video and pitch. Merges Enzo's PRs |
 | Jane Galthie | [@jgalthie-sketch](https://github.com/jgalthie-sketch) | Step 3: the clickstream consumer, its schema and dead letter queue, failure modes, ADR 0003. Steps 6 and 7: the images and the DAG, ADRs 0006 and 0007 |
 | Enzo Meret | [@emeret-as](https://github.com/emeret-as) | Step 4: native BigQuery tables, partitioning and clustering, daily demand materialised view, cost cap, slow-query runbook, ADR 0004 |
@@ -47,7 +59,7 @@ teaching team. Review and merge them like any other change.
 
 **Start with [CONTRIBUTING.md](CONTRIBUTING.md)** (machine setup, names of our
 shared resources, branch and review rules) **and
-[docs/workplan.md](docs/workplan.md)** (who does what until session 5).
+[docs/workplan.md](docs/workplan.md)** (who did what in steps 5 to 11).
 
 - **Every change goes through a pull request,** reviewed by another member
   before it reaches `main`.
@@ -92,14 +104,19 @@ deleted and pulled again, is in [docs/reproduce.md](docs/reproduce.md).
 
 ```
 docs/
-  architecture.md    target architecture and medallion layers
+  architecture.md    the diagram, what exists now, the decisions
   data-flows.md      data-flow matrix
   adr/               architecture decision records
   model/             dimensional model sketches
-ingestion/           from L03
-transform/           from L05
-orchestration/       from L07
-infra/               from L08
+  runbooks/          slow query, failed run, erasure
+  evidence/          outputs that back a claim in the docs
+  queries/           the daily revenue report
+ingestion/           export landing, extractor, clickstream consumer (L03)
+warehouse/           native tables and daily demand views (L04)
+transform/           dbt: silver and gold (L05)
+orchestration/       Airflow DAG (L07)
+infra/               lifecycle and access (L02), Terraform (L08),
+                     governance scripts (L10)
 ```
 
 ## Data
