@@ -3,10 +3,10 @@
 -- Keeps the strings None, NA, N/A and NULL (trap 4): a reviewer can type them,
 -- and nothing tells them from a missing value.
 -- Drops seller_product_flag, always S (trap 9).
+-- Drops buyer_id: no model reads it (ADR 0010, data minimisation).
 
 SELECT
     review_id,
-    buyer_id,
     NULLIF(TRIM(r_desc), '') AS review_text,
     NULLIF(TRIM(title), '') AS review_title,
     rating
