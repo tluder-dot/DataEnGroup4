@@ -83,7 +83,7 @@ flowchart LR
     ext["g04_bronze_1<br/>external tables"]
     wh["g04_warehouse<br/>7 native tables"]
     mv["3 materialised views<br/>daily demand"]
-    silver["g04_silver<br/>13 views: one defect, one fix"]
+    silver["g04_silver<br/>11 views, 2 tables: one defect, one fix<br/>buyer ID hashed"]
     gold["g04_gold<br/>2 facts, 3 dimensions"]
     secrets["g04_secrets<br/>the salt of the buyer ID hash"]
   end
@@ -105,7 +105,7 @@ flowchart LR
   ext -- "dbt" --> silver
   silver -- "dbt, tested:<br/>a failed test stops gold" --> gold
   dag -.->|"runs dbt build"| silver
-  secrets -.->|"salt, from the next image"| silver
+  secrets -.->|"salt of the hash"| silver
 
   subgraph iac["Terraform · infra/terraform/"]
     tf["the bucket and 5 datasets<br/>labelled, plan: No changes"]
@@ -125,7 +125,7 @@ flowchart LR
 | **The clickstream** | `bronze/clickstream/dt=YYYY-MM-DD/`, by `event_time`, at least once. Rejected events in `bronze/_dlq/clickstream/`. The consumer is a container that Docker restarts after a crash ([ingestion](../ingestion/README.md)) | |
 | **Dataset** `g04_bronze_1` | External tables over the export and the clickstream: nothing is copied into BigQuery | Till and Enzo (owners), Evaluna and Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
 | **Dataset** `g04_warehouse` | Seven native tables, partitioned and clustered, and three materialised views. `shipping_details` keeps only `address_id` and `country` ([tuning](warehouse-tuning.md)). On demand, with a 100 MiB cap ([ADR-0004](adr/0004-warehouse-pricing.md)) | Enzo (owner), Jane (BigQuery Data Viewer), the project's owners ([access](../infra/iam.md)) |
-| **Datasets** `g04_silver`, `g04_gold` | Built by dbt from `g04_bronze_1` ([transform/](../transform/README.md)): views for silver, tables for gold ([ADR-0005](adr/0005-materialisations.md)). Twins removed, every grain tested ([acceptance criteria](acceptance-criteria.md), [lineage](lineage.md)). From the next image, `stg_orders` and `stg_customer_shipping` become tables that hold a hashed buyer ID, and `stg_review` and `stg_clickstream` drop it ([ADR-0010](adr/0010-data-classification.md)) | Till and Enzo (owners), Jane (BigQuery Data Editor), Evaluna (BigQuery Data Viewer, narrowed from Editor on 20 November), the project's owners ([access](../infra/iam.md)) |
+| **Datasets** `g04_silver`, `g04_gold` | Built by dbt from `g04_bronze_1` ([transform/](../transform/README.md)): views for silver, tables for gold ([ADR-0005](adr/0005-materialisations.md)). Twins removed, every grain tested ([acceptance criteria](acceptance-criteria.md), [lineage](lineage.md)). Since 24 November, `stg_orders` and `stg_customer_shipping` are tables that hold a salted hash instead of the buyer ID, and `stg_review` and `stg_clickstream` drop it ([ADR-0010](adr/0010-data-classification.md)) | Till and Enzo (owners), Jane (BigQuery Data Editor), Evaluna (BigQuery Data Viewer, narrowed from Editor on 20 November), the project's owners ([access](../infra/iam.md)) |
 | **Dataset** `g04_secrets` | One table, `pii_salt`: the salt of the buyer ID hash, written once on 23 November by `transform/seed_pii_salt.py`. Created by Terraform with a complete access list, so the project's readers and writers get nothing ([secrets.tf](../infra/terraform/secrets.tf)) | Enzo (owner), Evaluna (writes the salt), Jane and Till (read it: they run dbt), the project's owners |
 | **Images** | `jgalthie/group4-ingestion` (extractor and consumer) and `jgalthie/group4-transform` (dbt) on Docker Hub, tagged by date and commit, never `latest`, for amd64 and arm64. The DAG pins one tag ([ADR-0006](adr/0006-image-registry-and-tags.md)) | |
 | **Airflow** | Airflow 3.3.2 in Docker on Jane's laptop. DAG `g04_marketplace_daily`, daily at 02:00 UTC: the extractor for seven tables, then the `_live` tables, a freshness check and `dbt build`, each a container from our images, one at a time. A failed test stops gold. A task that fails three times posts to `#pipeline-alerts` on Discord. Every task is safe to rerun ([ADR-0007](adr/0007-idempotency.md)). First green run: 19 November, 2 min 38 s ([orchestration](orchestration.md)) | Runs as Jane's own Google login |
@@ -145,9 +145,9 @@ flowchart LR
   ([orchestration](orchestration.md)).
 - **The warehouse still reads the export.** Silver reads the extractor's
   tables, which hold the database of whoever ran it last.
-- **Silver still holds buyer IDs.** The hash is merged (24 November) and its
-  salt is in `g04_secrets`, but the nightly run still uses the dbt image of 18
-  November: the hash reaches silver with the next image tag. Gold holds none.
+- **Bronze still holds the real buyer IDs.** Silver holds their hash, which is
+  still personal data, and the salt is only as secret as its table (gap 10 in
+  [governance](governance.md)). Gold holds neither.
 - **The classes are not enforced:** no real column carries a policy tag, and
   the tag on the test column did not refuse our own read
   ([governance](governance.md)).
@@ -196,4 +196,4 @@ flowchart LR
 | L07 | Airflow runs the extractor and dbt every night, with a quality gate and a Discord alert. The consumer runs as a service. ADR-0007 |
 | L08 | The bucket and the datasets declared in Terraform, with remote state and CI. ADR-0008 |
 | L09 | Labels on every managed resource. ADR-0009 |
-| L10 | Every column classified, with an owner. The access matrix, one grant narrowed, a policy tag tested, an erasure runbook tested on a copy. `g04_secrets` and the buyer ID hash, merged. ADR-0010 |
+| L10 | Every column classified, with an owner. The access matrix, one grant narrowed, a policy tag tested, an erasure runbook tested on a copy. The buyer ID hashed in silver since 24 November, its salt in `g04_secrets`. ADR-0010 |
