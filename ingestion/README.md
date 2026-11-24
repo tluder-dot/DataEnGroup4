@@ -9,7 +9,21 @@ In **L06** each ingestion job gets its Dockerfile here.
 
 Lands the 27 CSV files in `gs://data-engineering-i1-g04/bronze/<table>/` as
 Parquet, and creates the external tables `g04_bronze_1.<table>_external`.
-`customer.pwd`, `payment_details.card_no` and `cvv` are never read.
+`customer.pwd`, `payment_details.card_no` and `cvv` are never read: `usecols`
+skips them as each file is parsed (`SECRET_COLUMNS` in the script), so they are
+in no file and no table.
+
+**This script is our connector into bronze.** The course's connector is
+Airbyte, and Airbyte cannot write to our bucket or BigQuery without a service
+account, which groups do not get ([ADR-0003](../docs/adr/0003-ingestion-modes.md)).
+The nightly extractor below does not read `customer` or `payment_details` at
+all. Checked on 24 November 2026: this query returns no rows.
+
+```sql
+SELECT table_name, column_name
+FROM `data-engineering-i1.g04_bronze_1.INFORMATION_SCHEMA.COLUMNS`
+WHERE column_name IN ('pwd', 'card_no', 'cvv');
+```
 
 The dataset was created once, with:
 
