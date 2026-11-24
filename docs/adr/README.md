@@ -10,6 +10,8 @@ consequences. It fits on one page.
   `0002-...`.
 - **Start from** [`0000-template.md`](0000-template.md).
 - **Every group member writes at least one ADR** during the course.
+- **Who defends each one:** the decisions table in
+  [architecture.md](../architecture.md#decisions).
 
 The format follows Michael Nygard's "Documenting Architecture Decisions" (2011),
 with two sections added for this course: the options considered and the
