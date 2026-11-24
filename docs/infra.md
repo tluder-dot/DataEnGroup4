@@ -17,7 +17,7 @@ lives: [ADR 0008](adr/0008-remote-state.md).
 | `g04_gold` | dbt gold models (step 5) | Created by hand on 6 Nov. **Adopted** |
 | `g04_warehouse` | Native tables and materialised views of step 4 | Created by hand. **Adopted** |
 | `gs://data-engineering-i1-g04-tfstate` | Holds the Terraform state, versioned | **By hand, on purpose, and not in Terraform** (see below) |
-| `g04_bronze` | The first bronze dataset, replaced by `g04_bronze_1` | By hand. **Not adopted**: Evaluna deletes it, so declaring it would only add something to delete |
+| `g04_bronze` | The first bronze dataset, replaced by `g04_bronze_1` | By hand. **Not adopted**, because it was to be deleted. Deleted: gone when checked on 23 Nov 2026 |
 | `g04_secrets` | The salt of the buyer ID hash (step 10), kept away from the data it protects | No: declared in `secrets.tf` and created by Terraform on 23 Nov 2026 |
 | L2 service account | Would run the pipeline without a personal login | **Does not exist.** Not handled, see [Gaps](#gaps) |
 
