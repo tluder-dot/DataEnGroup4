@@ -1,6 +1,6 @@
 # ADR-0010: Grant access by data class, enforced at the lowest layer that can carry it
 
-- **Status:** proposed (the group accepts it by reviewing the pull request)
+- **Status:** accepted (2026-11-24)
 - **Date:** 2026-11-20
 - **Author:** Evaluna Barth
 - **Lesson:** L10
