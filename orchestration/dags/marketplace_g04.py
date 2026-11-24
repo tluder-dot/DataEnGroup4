@@ -34,7 +34,7 @@ GCLOUD_DIR = os.environ["GCLOUD_DIR"]
 ALERT_WEBHOOK = os.environ.get("ALERT_WEBHOOK", "")
 
 # The images, pinned by tag (ADR 0006). Change the tag here, nowhere else.
-TAG = "20261118-796cf3e"
+TAG = "20261124-067b13e"
 INGESTION_IMAGE = f"docker.io/jgalthie/group4-ingestion:{TAG}"
 TRANSFORM_IMAGE = f"docker.io/jgalthie/group4-transform:{TAG}"
 

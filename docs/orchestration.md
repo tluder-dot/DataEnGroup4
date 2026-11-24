@@ -20,7 +20,7 @@ extract_<table> (x7) >> recreate_live_tables >> source_freshness >> dbt_build
 | `source_freshness` | `group4-transform` | `dbt source freshness`: red when a source is past its error threshold |
 | `dbt_build` | `group4-transform` | Models and tests together: the quality gate |
 
-Every task is a container from our images, tag `20261118-796cf3e`
+Every task is a container from our images, tag `20261124-067b13e`
 ([ADR 0006](adr/0006-image-registry-and-tags.md)): the DAG holds no query and
 no pandas. The run's period reaches each extract as
 `RUN_INTERVAL={{ data_interval_start | ds }}`, never the clock. Full batch
