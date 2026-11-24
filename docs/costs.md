@@ -163,10 +163,10 @@ could not be written.
 
 What we would set, and who:
 
-- **Named person:** Enzo Méret (`emeret@albertschool.com`) for the group's
+- **Named person:** Enzo Méret, at his school address, for the group's
   alerts, with Till Lüder as the second recipient.
 - **Amount and thresholds:** $1 per month for the group, alerts at 50 %, 90 %
-  and 100 %. The current spend is about $0.005 per month (ledger below), so
+  and 100 %. The current spend is about $0.006 per month (ledger below), so
   $1 is more than 100× what we use: an alert means something is wrong, not that
   we are close.
 - **Where:** a budget filtered on the label `group=g04`. This only works for
@@ -272,12 +272,13 @@ GiB-month at 730 hours, but for the regions it lists, which we could not tie to
 | `gs://data-engineering-i1-g04` | 104,128,706 bytes (0.0970 GiB), Standard | $0.020 / GiB | $0.0019 | yes |
 | `g04_bronze_1` | 0 bytes (28 external tables) | n/a | $0 | yes |
 | `g04_warehouse` | 145,967,988 bytes (0.1359 GiB), read 19 Nov (267,697,890 on 6 Nov) | $0.020 / GiB | $0.0027 | yes |
-| `g04_silver` | 77 bytes (13 views, 1 table) | $0.020 / GiB | $0 | yes |
-| `g04_gold` | 42,265,798 bytes (0.0394 GiB) | $0.020 / GiB | $0.0008 | yes |
+| `g04_silver` | 35,413,573 bytes (0.0330 GiB), read 24 Nov: 11 views and 3 tables, since `stg_orders` and `stg_customer_shipping` became tables with the hashed buyer ID (77 bytes on 6 Nov) | $0.020 / GiB | $0.0007 | yes |
+| `g04_gold` | 43,572,134 bytes (0.0406 GiB), read 24 Nov (42,265,798 on 6 Nov) | $0.020 / GiB | $0.0008 | yes |
+| `g04_secrets` | 66 bytes, read 24 Nov: one table, `pii_salt`, one row | $0.020 / GiB | $0 | yes |
 | `gs://data-engineering-i1-g04-tfstate` | about 21 KB live plus versions | $0.020 / GiB | under $0.00001 | by hand |
-| `g04_bronze` (old, to delete) | not readable | n/a | not measured | none |
+| `g04_bronze` (old) | Deleted: gone when checked on 23 Nov | n/a | $0 | n/a |
 | Queries | 1,173,684,313 bytes on 5 Nov, 0 since | $7.50 / TiB, 1 TiB free | $0.0080 list, **$0 billed** | none (jobs) |
-| **Total, storage** | | | **$0.0054** (was $0.0077 on 6 Nov) | |
+| **Total, storage** | | | **$0.0061** (was $0.0077 on 6 Nov, $0.0054 before silver held tables) | |
 
 Everything is below BigQuery's free storage (10 GiB) and query (1 TiB) tiers,
 so the group's invoice should be $0 for BigQuery. The bucket has no free tier
